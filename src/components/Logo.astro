@@ -1,0 +1,131 @@
+---
+/**
+ * The Ghuro Bangladesh mark.
+ *
+ * A compass rose whose needle is a river meander — the atlas and the delta in
+ * one figure. The mark works at 20px (favicon, nav) and at 200px (footer).
+ */
+interface Props {
+  /** Pixel size of the mark. */
+  size?: number;
+  /** Show the wordmark alongside the mark. */
+  wordmark?: boolean;
+  /** Show the tagline under the wordmark. Implies `wordmark`. */
+  tagline?: boolean;
+  class?: string;
+}
+
+const { size = 34, wordmark = false, tagline = false, class: className = '' } = Astro.props;
+const showWord = wordmark || tagline;
+---
+
+<span class:list={['logo', className]} data-tagline={tagline ? '' : undefined}>
+  <svg
+    class="logo-mark"
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <circle cx="24" cy="24" r="22" class="lm-ring" stroke-width="2" />
+    <circle cx="24" cy="24" r="16.5" class="lm-ring-inner" stroke-width="1" stroke-dasharray="2 3.6" />
+    {/* Cardinal ticks */}
+    <path d="M24 2.5v5M24 40.5v5M2.5 24h5M40.5 24h5" class="lm-tick" stroke-width="2" stroke-linecap="round" />
+    {/* The river meander — the needle */}
+    <path
+      class="lm-river"
+      d="M13 33c4.4 0 4.4-6.4 8.8-6.4 4.4 0 4.4 6.4 8.8 6.4"
+      stroke-width="2.6"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      class="lm-needle"
+      d="M24 9.5 29.4 25 24 21.4 18.6 25Z"
+      stroke-linejoin="round"
+      stroke-width="1.2"
+    />
+  </svg>
+
+  {
+    showWord && (
+      <span class="logo-text">
+        <span class="logo-word">
+          Ghuro <em>Bangladesh</em>
+        </span>
+        {tagline && <span class="logo-tag">Discover Bangladesh, One Place at a Time.</span>}
+      </span>
+    )
+  }
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: inherit;
+  }
+  .logo[data-tagline] {
+    align-items: flex-start;
+  }
+
+  .logo-mark {
+    flex: none;
+    display: block;
+  }
+  .lm-ring {
+    stroke: var(--accent);
+  }
+  .lm-ring-inner {
+    stroke: var(--fg-subtle);
+    opacity: 0.75;
+  }
+  .lm-tick {
+    stroke: var(--fg);
+    opacity: 0.55;
+  }
+  .lm-river {
+    stroke: var(--color-delta-400);
+  }
+  .lm-needle {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .logo-word {
+    font-family: var(--font-display);
+    font-size: 1.1875rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    white-space: nowrap;
+    font-variation-settings: 'opsz' 40, 'WONK' 1;
+  }
+  .logo-word em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .logo-tag {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    color: var(--fg-subtle);
+    letter-spacing: 0.005em;
+  }
+
+  @media (max-width: 26rem) {
+    .logo-word {
+      font-size: 1.0625rem;
+    }
+  }
+</style>
