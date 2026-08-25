@@ -1,0 +1,93 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  href?: string;
+  linkLabel?: string;
+  /** Centre the block; used on full-bleed bands. */
+  center?: boolean;
+  /** Heading level, so pages keep a correct outline. */
+  as?: 'h2' | 'h3';
+  class?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  lead,
+  href,
+  linkLabel = 'See all',
+  center = false,
+  as: Tag = 'h2',
+  class: className = '',
+}: Props = Astro.props;
+---
+
+<header class:list={['sechead', { center }, className]}>
+  <div class="sechead-text">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <Tag class="sechead-title">{title}</Tag>
+    {lead && <p class="sechead-lead">{lead}</p>}
+  </div>
+  {
+    href && (
+      <a href={href} class="sechead-link">
+        {linkLabel}
+        <Icon name="arrowRight" size={16} />
+      </a>
+    )
+  }
+</header>
+
+<style>
+  .sechead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .sechead.center {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .sechead-text {
+    max-width: 44rem;
+  }
+  .sechead .eyebrow {
+    margin-bottom: 0.5rem;
+  }
+  .sechead-title {
+    font-size: clamp(1.5rem, 3.2vw, 2.125rem);
+    line-height: 1.12;
+  }
+  .sechead-lead {
+    margin-top: 0.625rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+    max-width: 42rem;
+  }
+  .sechead-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 0.375rem;
+    flex: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding-bottom: 0.125rem;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.16s, gap 0.16s;
+  }
+  .sechead-link:hover {
+    border-bottom-color: currentColor;
+    gap: 0.5rem;
+  }
+</style>

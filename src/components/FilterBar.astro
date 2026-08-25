@@ -1,0 +1,287 @@
+---
+import Icon from './Icon.astro';
+import { divisions, categoryGroups, categories, tags } from '@data/index';
+
+/**
+ * The shared filter/sort control used by the explore and listing pages.
+ *
+ * Rendered server-side and inert without JavaScript — the underlying page
+ * always ships the complete, unfiltered list, so this is pure enhancement.
+ */
+interface Props {
+  /** Which filter groups to offer. */
+  show?: ('division' | 'category' | 'tag')[];
+  /** Total shown in the result counter before filtering. */
+  total: number;
+  /** Noun used in the counter, e.g. "destinations". */
+  noun?: string;
+  class?: string;
+}
+
+const { show = ['division', 'category', 'tag'], total, noun = 'destinations', class: className = '' } = Astro.props;
+
+const featured = tags.filter((t) => t.featured);
+const groupedCategories = categoryGroups.map((g) => ({
+  ...g,
+  items: categories.filter((c) => c.group === g.slug),
+}));
+---
+
+<div class:list={['fbar', className]} data-filters>
+  <div class="fbar-top">
+    <div class="fbar-search">
+      <Icon name="search" size={16} class="fbar-search-icon" />
+      <input
+        type="search"
+        placeholder="Filter by name or district…"
+        aria-label="Filter the list"
+        data-filter-query
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+
+    <button type="button" class="btn btn-ghost btn-sm fbar-toggle" data-filter-toggle aria-expanded="false" aria-controls="filter-panel">
+      <Icon name="filter" size={15} /> Filters
+    </button>
+
+    <label class="fbar-sort">
+      <Icon name="sort" size={15} />
+      <span class="sr-only">Sort by</span>
+      <select data-filter-sort aria-label="Sort destinations">
+        <option value="curated">Curated order</option>
+        <option value="popular">Best known first</option>
+        <option value="quiet">Least visited first</option>
+        <option value="name">Name A–Z</option>
+        <option value="name-desc">Name Z–A</option>
+        <option value="district">By district</option>
+      </select>
+    </label>
+
+    <p class="fbar-count">
+      <strong class="tnum" data-filter-count>{total}</strong>
+      <span>{noun}</span>
+    </p>
+  </div>
+
+  <div class="fbar-active" data-filter-active hidden></div>
+
+  <div class="fbar-panel" id="filter-panel" data-filter-panel hidden>
+    {
+      show.includes('division') && (
+        <fieldset class="fgroup">
+          <legend class="fgroup-title">Division</legend>
+          <div class="fgroup-chips">
+            {divisions.map((d) => (
+              <button
+                type="button"
+                class="chip"
+                data-filter="division"
+                data-value={d.slug}
+                data-label={d.name}
+                aria-pressed="false"
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )
+    }
+
+    {
+      show.includes('category') &&
+        groupedCategories.map((g) => (
+          <fieldset class="fgroup">
+            <legend class="fgroup-title">{g.name}</legend>
+            <div class="fgroup-chips">
+              {g.items.map((c) => (
+                <button
+                  type="button"
+                  class="chip"
+                  data-filter="category"
+                  data-value={c.slug}
+                  data-label={c.name}
+                  aria-pressed="false"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ))
+    }
+
+    {
+      show.includes('tag') && (
+        <fieldset class="fgroup">
+          <legend class="fgroup-title">Interest</legend>
+          <div class="fgroup-chips">
+            {featured.map((t) => (
+              <button
+                type="button"
+                class="chip"
+                data-filter="tag"
+                data-value={t.slug}
+                data-label={t.name}
+                aria-pressed="false"
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )
+    }
+
+    <button type="button" class="btn btn-ghost btn-sm fbar-clear" data-filter-clear hidden>
+      <Icon name="close" size={14} /> Clear all filters
+    </button>
+  </div>
+</div>
+
+<style>
+  .fbar {
+    position: sticky;
+    top: 4.25rem;
+    z-index: 20;
+    background: color-mix(in oklab, var(--bg) 92%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    padding-block: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .fbar-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .fbar-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  :global(.fbar-search-icon) {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--fg-subtle);
+    pointer-events: none;
+  }
+  .fbar-search input {
+    width: 100%;
+    height: 2.375rem;
+    padding: 0 0.875rem 0 2.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--bg-raised);
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .fbar-search input:focus {
+    border-color: var(--accent);
+  }
+  .fbar-search input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
+  .fbar-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2.375rem;
+    padding: 0 0.625rem 0 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--bg-raised);
+    color: var(--fg-subtle);
+    cursor: pointer;
+  }
+  .fbar-sort select {
+    border: 0;
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--fg);
+    outline: none;
+    cursor: pointer;
+    padding-right: 0.25rem;
+  }
+
+  .fbar-count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3125rem;
+    margin-left: auto;
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+    white-space: nowrap;
+  }
+  .fbar-count strong {
+    font-size: 1rem;
+    color: var(--fg);
+  }
+
+  .fbar-active {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.625rem;
+  }
+  :global(.active-chip) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+    gap: 0.375rem;
+  }
+  :global(.active-chip:hover) {
+    background: var(--accent);
+    color: var(--accent-fg);
+    opacity: 0.85;
+  }
+
+  .fbar-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0.875rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--line);
+    max-height: 22rem;
+    overflow-y: auto;
+  }
+  .fgroup {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .fgroup-title {
+    padding: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.5rem;
+  }
+  .fgroup-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+  .fbar-clear {
+    align-self: flex-start;
+  }
+
+  @media (max-width: 40rem) {
+    .fbar-sort span,
+    .fbar-count span {
+      display: none;
+    }
+  }
+</style>

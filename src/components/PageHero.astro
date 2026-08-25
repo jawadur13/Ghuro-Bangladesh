@@ -1,0 +1,136 @@
+---
+import Breadcrumbs from './Breadcrumbs.astro';
+import Art from './Art.astro';
+import type { ArtRef } from '@lib/types';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  titleBn?: string;
+  lead?: string;
+  trail?: { name: string; href: string }[];
+  /** Background artwork; omit for a plain paper hero. */
+  art?: ArtRef;
+  /** Compact heroes are used on index pages, tall ones on regions. */
+  size?: 'compact' | 'tall';
+  class?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  titleBn,
+  lead,
+  trail,
+  art,
+  size = 'compact',
+  class: className = '',
+} = Astro.props;
+
+const dark = !!art;
+---
+
+<header class:list={['phead', `phead-${size}`, { dark }, className]}>
+  {
+    art && (
+      <div class="phead-art">
+        <Art art={art} alt="" loading="eager" priority ratio="21 / 9" class="phead-img" />
+        <div class="phead-scrim" />
+      </div>
+    )
+  }
+
+  <div class="wrap phead-inner">
+    {trail && <Breadcrumbs trail={trail} invert={dark} class="phead-crumbs" />}
+    {eyebrow && <p class="eyebrow phead-eyebrow">{eyebrow}</p>}
+    <h1 class="phead-title">{title}</h1>
+    {titleBn && <p class="phead-bn bn" lang="bn">{titleBn}</p>}
+    {lead && <p class="phead-lead">{lead}</p>}
+    <slot />
+  </div>
+</header>
+
+<style>
+  .phead {
+    position: relative;
+    isolation: isolate;
+    padding-block: 6.5rem 2.25rem;
+    overflow: hidden;
+  }
+  .phead-compact:not(.dark) {
+    padding-block: 6.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-sunken);
+  }
+  .phead-tall {
+    padding-block: 8rem 3rem;
+    min-height: min(24rem, 60svh);
+    display: flex;
+    align-items: flex-end;
+  }
+  .phead.dark {
+    color: #f4f1e8;
+  }
+
+  .phead-art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+  :global(.phead-img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .phead-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgb(5 18 16 / 0.94) 0%, rgb(5 18 16 / 0.68) 38%, rgb(5 18 16 / 0.3) 72%),
+      linear-gradient(to right, rgb(5 18 16 / 0.7), rgb(5 18 16 / 0.2) 66%, transparent 100%);
+  }
+
+  .phead-inner {
+    position: relative;
+    width: 100%;
+  }
+  :global(.phead-crumbs) {
+    margin-bottom: 1.375rem;
+  }
+  .phead-eyebrow {
+    margin-bottom: 0.5rem;
+  }
+  .phead.dark .phead-eyebrow {
+    color: rgb(244 241 232 / 0.66);
+  }
+
+  .phead-title {
+    font-size: clamp(2rem, 5.4vw, 3.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.028em;
+    max-width: 22ch;
+    font-variation-settings: 'opsz' 120, 'WONK' 1;
+  }
+  .phead.dark .phead-title {
+    color: #fff;
+  }
+  .phead-bn {
+    margin-top: 0.3125rem;
+    font-size: clamp(0.9375rem, 1.8vw, 1.25rem);
+    color: var(--fg-subtle);
+  }
+  .phead.dark .phead-bn {
+    color: rgb(244 241 232 / 0.74);
+  }
+
+  .phead-lead {
+    margin-top: 1rem;
+    max-width: 46rem;
+    font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  .phead.dark .phead-lead {
+    color: rgb(244 241 232 / 0.86);
+  }
+</style>

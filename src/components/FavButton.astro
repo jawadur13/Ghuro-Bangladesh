@@ -1,0 +1,115 @@
+---
+interface Props {
+  slug: string;
+  name: string;
+  class?: string;
+  /** `full` shows a label alongside the icon; used on destination pages. */
+  variant?: 'icon' | 'full';
+}
+const { slug, name, class: className = '', variant = 'icon' } = Astro.props;
+---
+
+<button
+  type="button"
+  class:list={['fav-btn', variant === 'full' ? 'is-full' : 'is-icon', className]}
+  data-fav-toggle={slug}
+  data-fav-name={name}
+  aria-pressed="false"
+  aria-label={`Save ${name}`}
+  title={`Save ${name}`}
+>
+  <svg
+    width={variant === 'full' ? 17 : 16}
+    height={variant === 'full' ? 17 : 16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    class="fav-glyph"
+  >
+    <path d="M6 3.5h12v17l-6-4.5-6 4.5z"></path>
+  </svg>
+  {variant === 'full' && <span class="fav-label">Save</span>}
+</button>
+
+<style>
+  .fav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4375rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: color-mix(in oklab, var(--bg-raised) 82%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--fg-muted);
+    cursor: pointer;
+    transition:
+      color 0.16s,
+      background-color 0.16s,
+      border-color 0.16s,
+      transform 0.16s var(--ease-out-soft);
+  }
+  .fav-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .fav-btn:active {
+    transform: scale(0.92);
+  }
+  .fav-btn[aria-pressed='true'] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .fav-glyph {
+    display: block;
+    fill: transparent;
+    transform-origin: center;
+    transition: fill 0.2s;
+  }
+  .fav-btn[aria-pressed='true'] .fav-glyph {
+    fill: currentColor;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .fav-btn[aria-pressed='true'] .fav-glyph {
+      animation: fav-pop 0.32s var(--ease-out-soft);
+    }
+  }
+  @keyframes fav-pop {
+    0% {
+      transform: scale(1);
+    }
+    45% {
+      transform: scale(1.35);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .fav-btn.is-icon {
+    width: 2.125rem;
+    height: 2.125rem;
+    padding: 0;
+  }
+
+  .fav-btn.is-full {
+    height: 2.75rem;
+    padding-inline: 1.125rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    background: transparent;
+    border-color: var(--line-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .fav-btn.is-full[aria-pressed='true'] .fav-label::after {
+    content: 'd';
+  }
+</style>
