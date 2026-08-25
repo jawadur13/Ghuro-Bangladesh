@@ -1,0 +1,559 @@
+---
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import SectionHead from '@components/SectionHead.astro';
+import Icon from '@components/Icon.astro';
+import Logo from '@components/Logo.astro';
+import { stats, places, districts } from '@data/index';
+import { faqLd } from '@lib/seo';
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'About', href: '/about' },
+];
+
+const withCoords = places.filter((p) => p.coords).length;
+const exactCoords = places.filter((p) => p.coordPrecision === 'exact').length;
+const withRoutes = places.filter((p) => p.routes?.length).length;
+const withUnverified = places.filter((p) => p.unverified?.length).length;
+const thinDistricts = districts.filter(
+  (d) => places.filter((p) => p.district === d.slug).length <= 2
+).length;
+
+const faqs = [
+  {
+    q: 'Who writes Ghuro Bangladesh?',
+    a: 'Every entry in this atlas was written for it. It is not aggregated from other travel sites, and it is not machine-translated from Bengali listings. Where a claim could not be established, the entry says so rather than guessing.',
+  },
+  {
+    q: 'How accurate are the coordinates?',
+    a: `Every destination with coordinates declares how precise they are. "Exact" means the site itself; "approx" means within a few kilometres; "area" means a representative point for something large or diffuse, like a haor or a stretch of coast. Of ${stats.places} destinations, ${withCoords} have coordinates and ${exactCoords} are marked exact.`,
+  },
+  {
+    q: 'Why are there no entry fees or opening hours on most pages?',
+    a: 'Because they change constantly and publishing a stale number is worse than publishing nothing. Where a site is free, it says free. Where a ticket is required, it says so without inventing a price. Opening hours appear only where they are stable and publicly documented.',
+  },
+  {
+    q: 'Why do some districts have only one or two destinations?',
+    a: `Because that is the honest position. ${thinDistricts} of the 64 districts currently have two entries or fewer. Those pages say so and point you to the nearest destinations in any direction, rather than padding the list with a district office and a roundabout.`,
+  },
+  {
+    q: 'Where do the photographs come from?',
+    a: 'There are none. Rather than use stock photography of uncertain provenance or scrape images with unclear licensing, every destination has procedurally generated artwork — a layered SVG scene built from a landscape family and a fixed seed. It is an editorial choice, not a placeholder.',
+  },
+];
+---
+
+<Base
+  title="About this atlas"
+  description="How Ghuro Bangladesh was built: what is in it, how the data is structured, where the boundaries come from, and what it deliberately does not claim to know."
+  path="/about"
+  breadcrumbs={trail}
+  jsonLd={[faqLd(faqs)]}
+>
+  <PageHero
+    eyebrow="About"
+    title="A field atlas, not a brochure"
+    lead="Ghuro Bangladesh is a travel reference for a country that is badly served by them. It is built to be useful before you go, and honest about what it does not know."
+    trail={trail}
+  />
+
+  <!-- ══════════ WHAT IT IS ══════════ -->
+  <section class="section-tight">
+    <div class="wrap ab-intro">
+      <div class="prose-atlas">
+        <p>
+          <em>Ghuro</em> — ঘুরো — means <em>roam</em>, or <em>travel around</em>. That is the whole
+          brief: a reference that helps people move around Bangladesh, whether they live there and
+          have never been north of Dhaka, or they are arriving for the first time.
+        </p>
+        <p>
+          Most travel writing about Bangladesh cycles through the same eight destinations. This
+          atlas covers <strong>{stats.places}</strong> across all {stats.divisions} divisions and
+          every one of the {stats.districts} districts — which means it includes the Sundarbans and
+          Cox's Bazar, and it also includes a cast-iron guest house in Mymensingh, a mosque surfaced
+          in broken porcelain in Syedpur, and the mango market that runs from four in the morning at
+          Kansat.
+        </p>
+        <p>
+          Every entry tries to answer six questions: <strong>what is special, why go, what can I
+          do, how do I get there, when should I go,</strong> and <strong>what should I know before
+          I turn up</strong>. If an entry cannot answer those, it probably should not exist.
+        </p>
+      </div>
+
+      <aside class="ab-brand">
+        <Logo size={64} tagline />
+        <dl class="ab-numbers">
+          <div><dt>Destinations</dt><dd class="tnum" data-count-to={stats.places}>0</dd></div>
+          <div><dt>Districts covered</dt><dd class="tnum" data-count-to={stats.districtsCovered}>0</dd></div>
+          <div><dt>With travel routes</dt><dd class="tnum" data-count-to={withRoutes}>0</dd></div>
+          <div><dt>Curated collections</dt><dd class="tnum" data-count-to={stats.collections}>0</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════ EDITORIAL RULES ══════════ -->
+  <section class="section-tight ab-rules-band" id="data">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Editorial rules"
+        title="What this atlas will and will not do"
+        lead="A travel reference is only worth anything if you can trust the parts you cannot check yourself. These are the rules the data is held to."
+      />
+      <div class="ab-rules">
+        <article class="ab-rule ab-rule-yes">
+          <h3><Icon name="check" size={17} /> It will</h3>
+          <ul>
+            <li>Say when a place is only worth visiting in a specific season, and which one.</li>
+            <li>Declare how precise every coordinate is — exact, approximate, or a representative point.</li>
+            <li>Name the permit, escort or convoy requirements in the Chittagong Hill Tracts, and say that the rules change.</li>
+            <li>Flag real safety risks: rip currents at Cox's Bazar, flash rises in the Mirsharai gorges, crocodiles in Thakur Dighi, the Nipah risk in raw date-palm sap.</li>
+            <li>Say when a district is thinly covered, and point you somewhere better.</li>
+            <li>List what it could not verify, on the page, under its own heading.</li>
+          </ul>
+        </article>
+
+        <article class="ab-rule ab-rule-no">
+          <h3><Icon name="close" size={17} /> It will not</h3>
+          <ul>
+            <li>Invent entry fees or opening hours. Both change; a stale number is worse than none.</li>
+            <li>Publish coordinates it is not confident in without saying so.</li>
+            <li>Claim to have documented every tourist location in Bangladesh. It has not, and no one has.</li>
+            <li>Pad a district page to make coverage look even.</li>
+            <li>Describe a working village as an attraction, or a shrine as a photo opportunity.</li>
+            <li>Pretend the labour behind the postcard — the stone-lifters at Jaflong, the sand boats on the Someshwari — is not there.</li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="ab-unverified-note">
+        <Icon name="info" size={15} />
+        <span>
+          <strong>{withUnverified}</strong> destinations currently carry an explicit
+          "what we could not confirm" note. That number going up is a good sign, not a bad one.
+        </span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ HOW IT IS BUILT ══════════ -->
+  <section class="section-tight">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Under the hood"
+        title="How it is built"
+        lead="No database, no CMS, no backend. The entire atlas is plain data files inside the project, compiled to static HTML."
+      />
+      <div class="ab-tech">
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="scroll" size={19} /></span>
+          <h3>The data is the source</h3>
+          <p>
+            Every destination is an object in a TypeScript file under <code>src/data/places/</code>,
+            one file per division. Adding a destination means appending an object and running the
+            build. A validator enforces referential integrity, slug uniqueness and coordinate sanity
+            before anything ships.
+          </p>
+        </article>
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="map" size={19} /></span>
+          <h3>The map is not a map service</h3>
+          <p>
+            District and division boundaries are pre-projected into SVG paths at build time, so the
+            map is inline SVG with no tile server, no map library and no external request. Every
+            region is a real link, so it works with JavaScript switched off.
+          </p>
+        </article>
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="search" size={19} /></span>
+          <h3>Search runs in your browser</h3>
+          <p>
+            A compact index is generated at build time and fetched once, on first use. Matching
+            handles Bengali script, Latin transliteration and older romanisations — Chittagong finds
+            Chattogram, Jessore finds Jashore.
+          </p>
+        </article>
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="camera" size={19} /></span>
+          <h3>The artwork is generated</h3>
+          <p>
+            Rather than stock photography of uncertain provenance, every destination has a layered
+            SVG scene composed from a landscape family and a fixed seed. Same seed, same picture,
+            every time. It is a deliberate choice about honesty and licensing, not a placeholder.
+          </p>
+        </article>
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="bookmark" size={19} /></span>
+          <h3>Your data stays yours</h3>
+          <p>
+            Saved places and the district tracker live in your browser's local storage. There is no
+            account, no analytics on your saved list, and nothing is transmitted. You can export the
+            list as a file, because a list that exists in only one browser is one you will eventually
+            lose.
+          </p>
+        </article>
+        <article class="ab-tech-item">
+          <span class="ab-tech-icon"><Icon name="leaf" size={19} /></span>
+          <h3>It is meant to be fast</h3>
+          <p>
+            Static HTML, self-hosted fonts, no framework runtime, and JavaScript that loads per page
+            only where it earns its place. The whole site should work on a slow connection, which is
+            the connection a lot of it will actually be read on.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SOURCES ══════════ -->
+  <section class="section-tight ab-sources-band">
+    <div class="wrap">
+      <SectionHead eyebrow="Attribution" title="Sources and credits" />
+      <dl class="ab-sources">
+        <div>
+          <dt>Administrative boundaries</dt>
+          <dd>
+            geoBoundaries gbOpen — Bangladesh ADM1 (CC0) and ADM2 (CC BY 3.0 IGO, sourced from the
+            Bangladesh Bureau of Statistics and OCHA ROAP). Geometry is simplified for web display;
+            it should not be used for any purpose requiring accurate boundaries.
+          </dd>
+        </div>
+        <div>
+          <dt>Area and administrative figures</dt>
+          <dd>
+            Bangladesh Bureau of Statistics and standard Banglapedia values, rounded. Treated as
+            approximate throughout.
+          </dd>
+        </div>
+        <div>
+          <dt>Typography</dt>
+          <dd>
+            Fraunces and Inter (SIL Open Font License), Noto Sans Bengali (SIL Open Font License) —
+            all self-hosted, subset to the ranges the site actually uses.
+          </dd>
+        </div>
+        <div>
+          <dt>Artwork</dt>
+          <dd>Generated for this project by a procedural SVG scene compositor. No third-party images are used.</dd>
+        </div>
+        <div>
+          <dt>Editorial content</dt>
+          <dd>
+            Written for this atlas. Historical and geographical claims are drawn from standard
+            reference sources and cross-checked where possible; anything that could not be
+            established is marked unverified on the relevant page.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ══════════ FAQ ══════════ -->
+  <section class="section">
+    <div class="wrap-narrow">
+      <SectionHead eyebrow="Questions" title="Reasonable questions about all this" />
+      <div class="ab-faq">
+        {
+          faqs.map((f) => (
+            <details class="ab-faq-item">
+              <summary>
+                <span>{f.q}</span>
+                <Icon name="plus" size={17} class="ab-plus" />
+                <Icon name="minus" size={17} class="ab-minus" />
+              </summary>
+              <div class="ab-faq-answer">
+                <p>{f.a}</p>
+              </div>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ WHAT'S NEXT ══════════ -->
+  <section class="section-tight ab-next-band">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="What this could become"
+        title="Where it goes from here"
+        lead="The architecture is deliberately boring so that it can grow. A few directions that would genuinely improve it, in rough order of usefulness."
+      />
+      <ol class="ab-next">
+        <li>
+          <strong>More destinations, especially in the thin districts.</strong> Magura, Chuadanga,
+          Kurigram and a dozen others deserve better than two entries. The data model already
+          supports thousands.
+        </li>
+        <li>
+          <strong>A full Bengali edition.</strong> Every place already carries a Bengali name and the
+          search handles Bengali script. The remaining work is the prose, which is the hard part.
+        </li>
+        <li>
+          <strong>Upazila-level pages.</strong> The data model has an upazila field on every
+          destination; the routing does not use it yet.
+        </li>
+        <li>
+          <strong>Trip planning that saves.</strong> The favourites store already groups by division;
+          turning that into a multi-day itinerary with travel legs is a small step.
+        </li>
+        <li>
+          <strong>Seasonal and access alerts.</strong> Hill Tracts permits, the hilsa ban, Saint
+          Martin's restrictions and Sundarbans closures all change on schedules the data could carry.
+        </li>
+      </ol>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .ab-intro {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .ab-intro {
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem);
+      gap: 3.5rem;
+    }
+  }
+  .ab-intro .prose-atlas strong {
+    color: var(--fg);
+  }
+  .ab-brand {
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-sunken);
+  }
+  .ab-numbers {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+  .ab-numbers dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  .ab-numbers dd {
+    margin: 0.1875rem 0 0;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .ab-rules-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+  .ab-rules {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (min-width: 50rem) {
+    .ab-rules {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .ab-rule {
+    padding: 1.375rem 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .ab-rule h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .ab-rule-yes h3 {
+    color: var(--color-delta-500);
+  }
+  .ab-rule-no h3 {
+    color: var(--color-terracotta-600);
+  }
+  .ab-rule ul {
+    margin: 0;
+    padding-left: 1.125rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .ab-rule li {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .ab-unverified-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 0.875rem 1.125rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-card);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .ab-unverified-note :global(svg) {
+    color: var(--accent);
+    margin-top: 0.15rem;
+    flex: none;
+  }
+  .ab-unverified-note strong {
+    color: var(--fg);
+  }
+
+  .ab-tech {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 1.5rem;
+  }
+  .ab-tech-icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  .ab-tech-item h3 {
+    font-size: 1.0625rem;
+    margin-bottom: 0.4375rem;
+  }
+  .ab-tech-item p {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  .ab-tech-item code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 4px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--line);
+  }
+
+  .ab-sources-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+  .ab-sources {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+  }
+  @media (min-width: 50rem) {
+    .ab-sources {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem 3rem;
+    }
+  }
+  .ab-sources dt {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.375rem;
+  }
+  .ab-sources dd {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+
+  .ab-faq {
+    display: flex;
+    flex-direction: column;
+  }
+  .ab-faq-item {
+    border-bottom: 1px solid var(--line);
+  }
+  .ab-faq-item summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.0625rem 0;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .ab-faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .ab-faq-item summary:hover {
+    color: var(--accent);
+  }
+  .ab-faq-item summary span {
+    flex: 1;
+  }
+  :global(.ab-plus),
+  :global(.ab-minus) {
+    flex: none;
+    color: var(--fg-subtle);
+  }
+  :global(.ab-minus) {
+    display: none;
+  }
+  .ab-faq-item[open] :global(.ab-plus) {
+    display: none;
+  }
+  .ab-faq-item[open] :global(.ab-minus) {
+    display: block;
+  }
+  .ab-faq-answer {
+    padding-bottom: 1.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--fg-muted);
+  }
+
+  .ab-next-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .ab-next {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    max-width: 52rem;
+  }
+  .ab-next li {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  .ab-next li::marker {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .ab-next strong {
+    color: var(--fg);
+  }
+</style>
