@@ -1,0 +1,487 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import SectionHead from '@components/SectionHead.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import Icon from '@components/Icon.astro';
+import Art from '@components/Art.astro';
+import {
+  divisions,
+  districtsIn,
+  placesIn,
+  placesByDistrict,
+  getCategory,
+} from '@data/index';
+import { divisionTitle, collectionLd, artPath, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  divisions.map((division) => ({
+    params: { division: division.slug },
+    props: { division },
+  }))) satisfies GetStaticPaths;
+
+const { division } = Astro.props;
+
+const districts = districtsIn(division.slug);
+const all = placesIn(division.slug);
+const featured = all.filter((p) => p.featured).slice(0, 6);
+const gems = all.filter((p) => p.hiddenGem && !p.featured).slice(0, 4);
+const rest = all
+  .filter((p) => !featured.some((f) => f.slug === p.slug) && !gems.some((g) => g.slug === p.slug))
+  .slice(0, 12);
+
+/* Which categories this division is actually strong in. */
+const categoryCounts = new Map<string, number>();
+for (const p of all) for (const c of p.categories) categoryCounts.set(c, (categoryCounts.get(c) ?? 0) + 1);
+const topCategories = [...categoryCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 8)
+  .map(([slug, count]) => ({ category: getCategory(slug)!, count }))
+  .filter((r) => r.category);
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Divisions', href: '/divisions' },
+  { name: division.name, href: `/divisions/${division.slug}` },
+];
+
+const jsonLd = [
+  collectionLd(
+    divisionTitle(division),
+    division.summary,
+    `/divisions/${division.slug}`,
+    all.map((p) => ({ name: p.name, slug: p.slug }))
+  ),
+];
+---
+
+<Base
+  title={divisionTitle(division)}
+  description={clamp(`${division.tagline} ${division.summary}`)}
+  path={`/divisions/${division.slug}`}
+  image={artPath(division.art, 'day')}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <PageHero
+    eyebrow={`${division.name} Division · ${all.length} destinations`}
+    title={division.name}
+    titleBn={division.nameBn}
+    lead={division.tagline}
+    trail={trail}
+    art={division.art}
+    size="tall"
+  >
+    <dl class="dhero-stats">
+      <div><dt>Districts</dt><dd class="tnum">{districts.length}</dd></div>
+      <div><dt>Destinations</dt><dd class="tnum">{all.length}</dd></div>
+      <div><dt>Area</dt><dd class="tnum">{division.areaKm2.toLocaleString('en-GB')} km²</dd></div>
+      <div><dt>Headquarters</dt><dd>{division.headquarters}</dd></div>
+    </dl>
+  </PageHero>
+
+  <!-- ══════════ INTRO + MAP ══════════ -->
+  <section class="section-tight">
+    <div class="wrap dv-intro">
+      <div class="dv-prose">
+        <div class="prose-atlas">
+          {division.description.map((p) => <p>{p}</p>)}
+        </div>
+
+        <div class="dv-character">
+          <h2 class="dv-sub">What travel here is like</h2>
+          <ul class="dv-char-list">
+            {division.character.map((c) => (
+              <li>
+                <Icon name="check" size={15} />
+                <span>{c}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <aside class="dv-aside">
+        <div class="dv-map-card">
+          <BangladeshMap level="districts" focus={division.slug} interactive={false} choropleth={false} />
+          <p class="dv-map-note">{division.name} within Bangladesh</p>
+        </div>
+
+        {
+          topCategories.length > 0 && (
+            <div class="dv-cats">
+              <h2 class="dv-sub">Strongest here</h2>
+              <ul>
+                {topCategories.map(({ category, count }) => (
+                  <li>
+                    <a href={`/categories/${category.slug}`}>
+                      <Icon name={category.icon} size={15} />
+                      <span class="dv-cat-name">{category.name}</span>
+                      <span class="dv-cat-count tnum">{count}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════ THEMES ══════════ -->
+  <section class="section-tight dv-themes-band">
+    <div class="wrap">
+      <SectionHead eyebrow="Travel themes" title={`What ${division.name} is for`} />
+      <div class="dv-themes">
+        {
+          division.themes.map((t, i) => (
+            <article class="dv-theme reveal" data-reveal-delay={i * 60}>
+              <span class="dv-theme-icon">
+                <Icon name={t.icon} size={20} />
+              </span>
+              <h3 class="dv-theme-title">{t.title}</h3>
+              <p class="dv-theme-note">{t.note}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ FEATURED ══════════ -->
+  {
+    featured.length > 0 && (
+      <section class="section">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Start here"
+            title={`The best of ${division.name}`}
+            lead={`If you have limited time in this division, these are the destinations to build around.`}
+          />
+          <div class="grid-cards">
+            {featured.map((p, i) => (
+              <div class="reveal" data-reveal-delay={(i % 3) * 60}>
+                <PlaceCard place={p} loading={i < 3 ? 'eager' : 'lazy'} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ══════════ DISTRICTS ══════════ -->
+  <section class="section-tight dv-districts-band">
+    <div class="wrap">
+      <SectionHead
+        eyebrow={`${districts.length} districts`}
+        title="Go district by district"
+        lead="Every district has a page, whether it has one destination or twenty."
+        href="/districts"
+        linkLabel="All 64 districts"
+      />
+      <ul class="dv-districts">
+        {
+          districts.map((d) => {
+            const count = (placesByDistrict.get(d.slug) ?? []).length;
+            return (
+              <li>
+                <a href={`/districts/${d.slug}`} class="dv-district">
+                  <Art art={d.art} alt="" ratio="16 / 10" class="dv-district-art" />
+                  <span class="dv-district-body">
+                    <span class="dv-district-name">{d.name}</span>
+                    <span class="dv-district-bn bn" lang="bn">
+                      {d.nameBn}
+                    </span>
+                    <span class="dv-district-tag">{d.tagline}</span>
+                    <span class="dv-district-count tnum">
+                      {count} {count === 1 ? 'place' : 'places'}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════ HIDDEN GEMS ══════════ -->
+  {
+    gems.length > 0 && (
+      <section class="section band-dark">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Under-visited"
+            title={`Quieter corners of ${division.name}`}
+            href="/collections/hidden-gems"
+            linkLabel="More hidden gems"
+          />
+          <div class="grid-cards">
+            {gems.map((p) => (
+              <PlaceCard place={p} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ══════════ EVERYTHING ELSE ══════════ -->
+  {
+    rest.length > 0 && (
+      <section class="section">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Also in this division"
+            title="More to find"
+            href={`/explore?division=${division.slug}`}
+            linkLabel={`All ${all.length} destinations`}
+          />
+          <div class="grid-cards">
+            {rest.map((p) => (
+              <PlaceCard place={p} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .dhero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2.5rem;
+    margin: 1.75rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgb(244 241 232 / 0.18);
+  }
+  .dhero-stats dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(244 241 232 / 0.62);
+  }
+  .dhero-stats dd {
+    margin: 0.1875rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .dv-intro {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .dv-intro {
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      gap: 3.5rem;
+    }
+  }
+
+  .dv-sub {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.875rem;
+  }
+  .dv-character {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .dv-char-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .dv-char-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .dv-char-list :global(svg) {
+    color: var(--color-delta-500);
+    margin-top: 0.2rem;
+    flex: none;
+  }
+
+  .dv-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .dv-map-card {
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .dv-map-note {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--fg-subtle);
+  }
+  .dv-cats ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dv-cats a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.875rem;
+  }
+  .dv-cats a:hover {
+    color: var(--accent);
+  }
+  .dv-cats :global(svg) {
+    color: var(--fg-subtle);
+    flex: none;
+  }
+  .dv-cat-name {
+    flex: 1;
+  }
+  .dv-cat-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--fg-subtle);
+  }
+
+  .dv-themes-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+  .dv-themes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 1.25rem;
+  }
+  .dv-theme {
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .dv-theme-icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-bottom: 0.875rem;
+  }
+  .dv-theme-title {
+    font-size: 1.0625rem;
+    margin-bottom: 0.375rem;
+  }
+  .dv-theme-note {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+  }
+
+  .dv-districts-band {
+    padding-bottom: 3rem;
+  }
+  .dv-districts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0.875rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dv-district {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s var(--ease-out-soft);
+  }
+  .dv-district:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .dv-district:hover {
+      transform: translateY(-2px);
+    }
+  }
+  :global(.dv-district-art) {
+    width: 100%;
+  }
+  .dv-district-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.75rem 0.875rem 0.875rem;
+    flex: 1;
+  }
+  .dv-district-name {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .dv-district-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .dv-district-tag {
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--fg-muted);
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .dv-district-count {
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+  }
+</style>

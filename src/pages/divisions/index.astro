@@ -1,0 +1,245 @@
+---
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import DivisionCard from '@components/DivisionCard.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import Icon from '@components/Icon.astro';
+import { divisions, places, districtsIn, stats } from '@data/index';
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Divisions', href: '/divisions' },
+];
+
+const rows = divisions.map((d) => ({
+  division: d,
+  count: places.filter((p) => p.division === d.slug).length,
+  districts: districtsIn(d.slug).length,
+}));
+---
+
+<Base
+  title="The eight divisions of Bangladesh"
+  description="Bangladesh is divided into eight administrative divisions, and each one travels completely differently. A guide to all of them, with destination counts and what each region is actually for."
+  path="/divisions"
+  breadcrumbs={trail}
+>
+  <PageHero
+    eyebrow="Explore by region"
+    title="Eight divisions, eight different countries"
+    lead="Bangladesh is small — you could drive its length in a long day — and it is not remotely uniform. Mangrove delta in the south-west, mountains in the south-east, the archaeological plain in the north-west, tea and wetland in the north-east."
+    trail={trail}
+  />
+
+  <section class="section-tight">
+    <div class="wrap div-intro">
+      <div class="div-map">
+        <BangladeshMap level="divisions" height="auto" detail="full" />
+      </div>
+      <div class="div-intro-text">
+        <h2 class="div-intro-title">How to read the map</h2>
+        <p>
+          The shading shows how many destinations this atlas currently documents in each division.
+          Chattogram is dense because it contains both the only mountains in the country and the
+          longest beach; the western plains are quieter because there is genuinely less there.
+        </p>
+        <p>
+          If you are planning a first trip, the two easiest regions to build a week around are
+          <a href="/divisions/sylhet">Sylhet</a> — everything within two hours of everything else,
+          good trains, decent accommodation — and
+          <a href="/divisions/chattogram">Chattogram</a>, if you are prepared for the Hill Tracts
+          permit rules.
+        </p>
+        <dl class="div-stats">
+          <div><dt>Divisions</dt><dd class="tnum">{stats.divisions}</dd></div>
+          <div><dt>Districts</dt><dd class="tnum">{stats.districts}</dd></div>
+          <div><dt>Destinations</dt><dd class="tnum">{stats.places}</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="wrap">
+      <div class="grid-divisions">
+        {
+          rows.map(({ division }, i) => (
+            <div class="reveal" data-reveal-delay={(i % 4) * 60}>
+              <DivisionCard division={division} loading={i < 4 ? 'eager' : 'lazy'} />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <h2 class="div-table-title">At a glance</h2>
+      <div class="div-table-wrap">
+        <table class="div-table">
+          <thead>
+            <tr>
+              <th scope="col">Division</th>
+              <th scope="col">Bengali</th>
+              <th scope="col">Headquarters</th>
+              <th scope="col" class="num">Districts</th>
+              <th scope="col" class="num">Area (km²)</th>
+              <th scope="col" class="num">Destinations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              rows.map(({ division, count, districts }) => (
+                <tr>
+                  <th scope="row">
+                    <a href={`/divisions/${division.slug}`}>{division.name}</a>
+                  </th>
+                  <td class="bn" lang="bn">
+                    {division.nameBn}
+                  </td>
+                  <td>{division.headquarters}</td>
+                  <td class="num tnum">{districts}</td>
+                  <td class="num tnum">{division.areaKm2.toLocaleString('en-GB')}</td>
+                  <td class="num tnum">{count}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="div-table-note">
+        <Icon name="info" size={14} /> Area figures are Bangladesh Bureau of Statistics values, rounded.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .div-intro {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+  }
+  .div-map {
+    max-width: 26rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+  .div-intro-title {
+    font-size: clamp(1.375rem, 2.8vw, 1.75rem);
+    margin-bottom: 0.875rem;
+  }
+  .div-intro-text p {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--fg-muted);
+  }
+  .div-intro-text p + p {
+    margin-top: 0.875rem;
+  }
+  .div-intro-text a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .div-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+  .div-stats dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  .div-stats dd {
+    margin: 0.1875rem 0 0;
+    font-family: var(--font-display);
+    font-size: 1.875rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+  @media (min-width: 56rem) {
+    .div-intro {
+      grid-template-columns: minmax(16rem, 24rem) 1fr;
+      gap: 3.5rem;
+    }
+  }
+
+  .grid-divisions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .div-table-title {
+    font-size: clamp(1.25rem, 2.4vw, 1.5rem);
+    margin-bottom: 1rem;
+  }
+  .div-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .div-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    min-width: 40rem;
+  }
+  .div-table th,
+  .div-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  .div-table thead th {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    background: var(--bg-sunken);
+    white-space: nowrap;
+  }
+  .div-table tbody th {
+    font-weight: 600;
+  }
+  .div-table tbody th a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+  .div-table tbody th a:hover {
+    color: var(--accent);
+  }
+  .div-table tbody tr:last-child th,
+  .div-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .div-table tbody tr:hover {
+    background: var(--bg-sunken);
+  }
+  .div-table .num {
+    text-align: right;
+  }
+  .div-table td {
+    color: var(--fg-muted);
+  }
+  .div-table-note {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+</style>
