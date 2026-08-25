@@ -1,0 +1,20 @@
+# Normalise text to LF in the repository regardless of the checkout platform.
+* text=auto eol=lf
+
+# Data and source that other tooling parses byte-for-byte.
+*.json  text eol=lf
+*.ts    text eol=lf
+*.astro text eol=lf
+*.mjs   text eol=lf
+*.css   text eol=lf
+*.md    text eol=lf
+
+# Generated artwork is text, but there is a lot of it — keep diffs collapsed.
+public/images/art/*.svg linguist-generated=true
+src/data/geo/*.json     linguist-generated=true
+
+# Binary assets.
+*.woff2 binary
+*.png   binary
+*.jpg   binary
+*.ico   binary
