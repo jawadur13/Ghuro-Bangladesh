@@ -1,0 +1,198 @@
+---
+import Logo from './Logo.astro';
+import Icon from './Icon.astro';
+import { divisions, categories, stats, collections } from '@data/index';
+
+const year = new Date().getFullYear();
+
+const heritage = categories.filter((c) => c.group === 'heritage').slice(0, 6);
+const nature = categories.filter((c) => c.group === 'nature').slice(0, 6);
+const topCollections = collections.slice(0, 6);
+---
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <Logo size={44} tagline />
+        <p class="footer-blurb">
+          A field atlas of Bangladesh — {stats.places} researched destinations across all
+          {stats.divisions} divisions and {stats.districts} districts, written for people who are actually
+          going.
+        </p>
+        <div class="footer-cta">
+          <a href="/discover" class="btn btn-primary btn-sm">
+            <Icon name="compass" size={15} /> Where should I go?
+          </a>
+          <a href="/map" class="btn btn-ghost btn-sm">
+            <Icon name="map" size={15} /> Open the map
+          </a>
+        </div>
+      </div>
+
+      <nav class="footer-cols" aria-label="Footer">
+        <div>
+          <h2 class="footer-head">Divisions</h2>
+          <ul>
+            {divisions.map((d) => <li><a href={`/divisions/${d.slug}`}>{d.name}</a></li>)}
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="footer-head">Nature</h2>
+          <ul>
+            {nature.map((c) => <li><a href={`/categories/${c.slug}`}>{c.name}</a></li>)}
+            <li><a href="/categories">All categories</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="footer-head">Heritage</h2>
+          <ul>
+            {heritage.map((c) => <li><a href={`/categories/${c.slug}`}>{c.name}</a></li>)}
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="footer-head">Plan a trip</h2>
+          <ul>
+            {topCollections.map((c) => <li><a href={`/collections/${c.slug}`}>{c.title}</a></li>)}
+            <li><a href="/collections">All collections</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="footer-head">The atlas</h2>
+          <ul>
+            <li><a href="/explore">Explore all places</a></li>
+            <li><a href="/districts">All 64 districts</a></li>
+            <li><a href="/seasons">Best time to visit</a></li>
+            <li><a href="/discover">Discovery tool</a></li>
+            <li><a href="/favourites">Saved places</a></li>
+            <li><a href="/about">About &amp; sources</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+
+    <hr class="stitch-rule footer-rule" />
+
+    <div class="footer-bottom">
+      <p class="footer-legal">
+        © {year} Ghuro Bangladesh. Editorial content written for this atlas.
+        <a href="/about#data">How this was researched</a>.
+      </p>
+      <p class="footer-attr">
+        Boundary data: geoBoundaries gbOpen (BGD ADM1 CC0, ADM2 CC BY 3.0 IGO — Bangladesh Bureau of
+        Statistics / OCHA). Artwork generated for this project.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: clamp(3rem, 8vw, 6rem);
+    padding-block: clamp(2.5rem, 6vw, 4rem) 2.5rem;
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+    font-size: 0.9375rem;
+  }
+
+  .footer-top {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .footer-brand {
+    max-width: 30rem;
+  }
+  .footer-blurb {
+    margin-top: 1rem;
+    color: var(--fg-muted);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+  }
+  .footer-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
+  .footer-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 2rem 1.5rem;
+  }
+  .footer-head {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.75rem;
+  }
+  .footer-cols ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .footer-cols a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    transition: color 0.16s;
+  }
+  .footer-cols a:hover {
+    color: var(--accent);
+  }
+
+  .footer-rule {
+    margin-block: 2.5rem 1.5rem;
+  }
+
+  .footer-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .footer-legal,
+  .footer-attr {
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+    line-height: 1.55;
+  }
+  .footer-legal a {
+    color: var(--fg-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .footer-legal a:hover {
+    color: var(--accent);
+  }
+
+  @media (min-width: 62rem) {
+    .footer-top {
+      grid-template-columns: minmax(16rem, 22rem) 1fr;
+      gap: 4rem;
+    }
+    .footer-bottom {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 2rem;
+    }
+    .footer-attr {
+      max-width: 36rem;
+      text-align: right;
+    }
+  }
+</style>
