@@ -1,0 +1,296 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import Art from '@components/Art.astro';
+import { divisions, featuredPlaces, hiddenGems, stats } from '@data/index';
+
+/**
+ * The 404 page.
+ *
+ * A dead end is the worst thing a reference site can produce, so this offers
+ * search, the main routes in, and a handful of real destinations — and it
+ * tries a live search on the mistyped path, which catches most cases where
+ * someone edited a URL by hand.
+ */
+const suggestions = [featuredPlaces[0], hiddenGems[0], featuredPlaces[3], hiddenGems[3]].filter(Boolean);
+const heroArt = { key: 'river', seed: 1000, mood: 'dusk' } as const;
+---
+
+<Base
+  title="Page not found"
+  description="That page does not exist. Search the atlas, or start from a division, a district or the map."
+  path="/404"
+  noindex
+  transparentHeader
+>
+  <div class="nf">
+    <div class="nf-art">
+      <Art art={heroArt} alt="" loading="eager" ratio="21 / 9" class="nf-img" />
+      <div class="nf-scrim"></div>
+    </div>
+
+    <div class="wrap nf-inner">
+      <p class="nf-code">404</p>
+      <h1 class="nf-title">This road does not go anywhere.</h1>
+      <p class="nf-lead">
+        The page you asked for is not part of this atlas. It may have been renamed, or the link may
+        have been typed by hand. Either way — here is the way back in.
+      </p>
+
+      <div class="nf-search">
+        <button type="button" class="nf-search-btn" data-search-open>
+          <Icon name="search" size={19} />
+          <span>Search {stats.places} destinations…</span>
+          <kbd>/</kbd>
+        </button>
+      </div>
+
+      <div class="nf-guess" data-nf-guess hidden>
+        <p class="nf-guess-label">Did you mean:</p>
+        <ul class="nf-guess-list" data-nf-guess-list></ul>
+      </div>
+
+      <ul class="nf-links">
+        <li><a href="/" class="nf-link"><Icon name="compass" size={15} /> Home</a></li>
+        <li><a href="/explore" class="nf-link"><Icon name="grid" size={15} /> All destinations</a></li>
+        <li><a href="/districts" class="nf-link"><Icon name="pin" size={15} /> 64 districts</a></li>
+        <li><a href="/map" class="nf-link"><Icon name="map" size={15} /> The map</a></li>
+        <li><a href="/discover" class="nf-link"><Icon name="bulb" size={15} /> Where should I go?</a></li>
+      </ul>
+
+      <ul class="nf-divisions">
+        {divisions.map((d) => <li><a href={`/divisions/${d.slug}`} class="chip">{d.name}</a></li>)}
+      </ul>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="wrap">
+      <h2 class="nf-sug-title">While you are here</h2>
+      <div class="nf-grid">
+        {suggestions.map((p) => <PlaceCard place={p} />)}
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .nf {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: min(38rem, 88svh);
+    padding-block: 7rem 3rem;
+    color: #f4f1e8;
+    overflow: hidden;
+  }
+  .nf-art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+  :global(.nf-img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .nf-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, rgb(5 18 16 / 0.92) 0%, rgb(5 18 16 / 0.7) 50%, rgb(5 18 16 / 0.35) 100%),
+      linear-gradient(to top, rgb(5 18 16 / 0.7), transparent 50%);
+  }
+  .nf-inner {
+    position: relative;
+    max-width: 46rem;
+  }
+
+  .nf-code {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    letter-spacing: 0.3em;
+    color: var(--color-marigold-300);
+  }
+  .nf-title {
+    margin-top: 0.75rem;
+    font-size: clamp(2rem, 6vw, 3.75rem);
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    color: #fff;
+  }
+  .nf-lead {
+    margin-top: 1rem;
+    max-width: 38rem;
+    font-size: clamp(0.9375rem, 1.7vw, 1.0625rem);
+    line-height: 1.65;
+    color: rgb(244 241 232 / 0.86);
+  }
+
+  .nf-search {
+    margin-top: 1.75rem;
+    max-width: 30rem;
+  }
+  .nf-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.875rem 0.875rem 0.875rem 1.125rem;
+    border: 1px solid rgb(244 241 232 / 0.28);
+    border-radius: var(--radius-pill);
+    background: rgb(10 22 20 / 0.55);
+    backdrop-filter: blur(14px);
+    color: rgb(244 241 232 / 0.78);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s, background-color 0.18s;
+  }
+  .nf-search-btn:hover {
+    border-color: rgb(244 241 232 / 0.55);
+    background: rgb(10 22 20 / 0.72);
+  }
+  .nf-search-btn span {
+    flex: 1;
+  }
+  .nf-search-btn kbd {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.4375rem;
+    border: 1px solid rgb(244 241 232 / 0.24);
+    border-radius: 5px;
+  }
+
+  .nf-guess {
+    margin-top: 1.25rem;
+    padding: 0.875rem 1.125rem;
+    border: 1px solid rgb(244 241 232 / 0.24);
+    border-radius: var(--radius-card);
+    background: rgb(10 22 20 / 0.45);
+    backdrop-filter: blur(10px);
+    max-width: 30rem;
+  }
+  .nf-guess-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(244 241 232 / 0.6);
+    margin-bottom: 0.5rem;
+  }
+  .nf-guess-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .nf-guess-list a {
+    display: block;
+    padding: 0.3125rem 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-marigold-200);
+  }
+  .nf-guess-list a:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .nf-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 1.75rem 0 0;
+    padding: 0;
+  }
+  .nf-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid rgb(244 241 232 / 0.24);
+    border-radius: var(--radius-pill);
+    font-size: 0.875rem;
+    font-weight: 550;
+    color: rgb(244 241 232 / 0.92);
+    backdrop-filter: blur(8px);
+    transition: background-color 0.16s, border-color 0.16s;
+  }
+  .nf-link:hover {
+    background: rgb(244 241 232 / 0.14);
+    border-color: rgb(244 241 232 / 0.5);
+  }
+
+  .nf-divisions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+  }
+  .nf-divisions :global(.chip) {
+    background: transparent;
+    border-color: rgb(244 241 232 / 0.2);
+    color: rgb(244 241 232 / 0.75);
+  }
+  .nf-divisions :global(.chip:hover) {
+    background: rgb(244 241 232 / 0.12);
+    border-color: rgb(244 241 232 / 0.45);
+    color: #fff;
+  }
+
+  .nf-sug-title {
+    font-size: clamp(1.25rem, 2.6vw, 1.625rem);
+    margin-bottom: 1.25rem;
+  }
+  .nf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1.25rem;
+  }
+</style>
+
+<script>
+  /**
+   * Try to rescue a mistyped URL: take the last path segment, run it through
+   * the same search index the rest of the site uses, and offer the top hits.
+   */
+  import { loadIndex, search } from '@/scripts/search';
+
+  const guess = document.querySelector<HTMLElement>('[data-nf-guess]');
+  const list = document.querySelector<HTMLElement>('[data-nf-guess-list]');
+
+  if (guess && list) {
+    const segment = decodeURIComponent(location.pathname)
+      .replace(/\/+$/, '')
+      .split('/')
+      .pop();
+
+    if (segment && segment.length > 2) {
+      const query = segment.replace(/[-_]+/g, ' ').trim();
+      loadIndex()
+        .then((docs) => {
+          const hits = search(docs, query, 4);
+          if (!hits.length) return;
+          list.innerHTML = hits
+            .map(
+              (h) =>
+                `<li><a href="/places/${h.doc.i}">${h.doc.n.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)} <span style="opacity:.62">— ${h.doc.d.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</span></a></li>`
+            )
+            .join('');
+          guess.hidden = false;
+        })
+        .catch(() => {
+          /* no index, no suggestions — the links below are still there */
+        });
+    }
+  }
+</script>
