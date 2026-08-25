@@ -1,0 +1,338 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import SectionHead from '@components/SectionHead.astro';
+import FilterBar from '@components/FilterBar.astro';
+import Icon from '@components/Icon.astro';
+import { seasons, placesInSeason, MONTHS, MONTHS_SHORT, getCategory } from '@data/index';
+import { collectionLd, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  seasons.map((season) => ({ params: { season: season.slug }, props: { season } }))) satisfies GetStaticPaths;
+
+const { season } = Astro.props;
+
+const places = placesInSeason(season.slug).sort(
+  (a, b) => b.popularity - a.popularity || a.name.localeCompare(b.name)
+);
+
+/**
+ * "Only in this season" — places whose entire good-time window sits inside
+ * this season. These are the ones the page exists to surface.
+ */
+const monthSet = new Set(season.months);
+const exclusive = places.filter(
+  (p) => p.bestTime && p.bestTime.months.every((m) => monthSet.has(m))
+);
+const rest = places.filter((p) => !exclusive.some((e) => e.slug === p.slug));
+
+const others = seasons.filter((s) => s.slug !== season.slug);
+
+/* Hero art: pick the family that dominates this season's list. */
+const catCount = new Map<string, number>();
+for (const p of places) catCount.set(p.categories[0], (catCount.get(p.categories[0]) ?? 0) + 1);
+const dominant = [...catCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+const heroArt = {
+  key: getCategory(dominant ?? 'river')?.art ?? 'river',
+  seed: 1000,
+  mood: season.slug === 'monsoon' ? ('monsoon' as const) : season.slug === 'winter' ? ('dawn' as const) : undefined,
+};
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Seasons', href: '/seasons' },
+  { name: season.name, href: `/seasons/${season.slug}` },
+];
+
+const jsonLd = [
+  collectionLd(
+    `${season.name} in Bangladesh`,
+    season.description,
+    `/seasons/${season.slug}`,
+    places.map((p) => ({ name: p.name, slug: p.slug }))
+  ),
+];
+---
+
+<Base
+  title={`${season.name} in Bangladesh — where to go`}
+  description={clamp(`${season.tagline} ${season.description}`)}
+  path={`/seasons/${season.slug}`}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <PageHero
+    eyebrow={`${season.bengaliSeason} · ${season.months.map((m) => MONTHS[m - 1]).join(' – ')}`}
+    title={season.name}
+    titleBn={season.nameBn}
+    lead={season.tagline}
+    trail={trail}
+    art={heroArt}
+    size="tall"
+  >
+    <div class="se-months" role="img" aria-label={`${season.name} covers ${season.months.map((m) => MONTHS[m - 1]).join(', ')}`}>
+      {
+        MONTHS_SHORT.map((m, i) => (
+          <span class:list={['se-month', { on: monthSet.has(i + 1) }]}>{m}</span>
+        ))
+      }
+    </div>
+  </PageHero>
+
+  <section class="section-tight">
+    <div class="wrap se-intro">
+      <p class="prose-atlas se-desc">{season.description}</p>
+
+      <div class="se-cols">
+        <div class="se-col se-good">
+          <h2><Icon name="check" size={15} /> Good for</h2>
+          <ul>{season.goodFor.map((g) => <li>{g}</li>)}</ul>
+        </div>
+        <div class="se-col se-watch">
+          <h2><Icon name="alert" size={15} /> Watch out</h2>
+          <ul>{season.watchOut.map((g) => <li>{g}</li>)}</ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {
+    exclusive.length > 0 && (
+      <section class="section-tight se-exclusive-band">
+        <div class="wrap">
+          <SectionHead
+            eyebrow={`${exclusive.length} places`}
+            title={`Only really worth it in ${season.name.toLowerCase()}`}
+            lead="These destinations name no good month outside this season. Go now or wait a year."
+          />
+          <div class="grid-cards">
+            {exclusive.map((p, i) => (
+              <PlaceCard place={p} loading={i < 6 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section-tight">
+    <div class="wrap">
+      <SectionHead
+        eyebrow={`${places.length} destinations`}
+        title={`Everything good in ${season.name.toLowerCase()}`}
+      />
+    </div>
+    <div class="wrap">
+      <FilterBar total={places.length} show={['division', 'category', 'tag']} />
+      <div class="grid-cards" data-filter-grid>
+        {
+          (exclusive.length ? rest : places).map((p, i) => (
+            <div data-filter-item class="defer-paint">
+              <PlaceCard place={p} loading={i < 6 ? 'eager' : 'lazy'} />
+            </div>
+          ))
+        }
+      </div>
+      <div class="se-empty" data-filter-empty hidden>
+        <h2>Nothing matches those filters</h2>
+        <p>Try removing one, or look at another season.</p>
+        <button type="button" class="btn btn-primary" data-filter-clear>Clear filters</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section se-others-band">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Travelling another time?"
+        title="The other five seasons"
+        href="/seasons"
+        linkLabel="Full seasonal guide"
+      />
+      <ul class="se-others">
+        {
+          others.map((s) => (
+            <li>
+              <a href={`/seasons/${s.slug}`}>
+                <span class="se-other-name">{s.name}</span>
+                <span class="se-other-bn bn" lang="bn">
+                  {s.nameBn}
+                </span>
+                <span class="se-other-months">{s.months.map((m) => MONTHS_SHORT[m - 1]).join(' – ')}</span>
+                <span class="se-other-tag">{s.tagline}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .se-months {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 3px;
+    max-width: 30rem;
+    margin-top: 1.5rem;
+  }
+  .se-month {
+    padding: 0.4375rem 0.125rem;
+    text-align: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background: rgb(244 241 232 / 0.14);
+    border: 1px solid rgb(244 241 232 / 0.2);
+    color: rgb(244 241 232 / 0.65);
+  }
+  .se-month.on {
+    background: var(--color-terracotta-500);
+    border-color: var(--color-terracotta-500);
+    color: #fff;
+  }
+  @media (max-width: 32rem) {
+    .se-months {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+
+  .se-intro {
+    display: grid;
+    gap: 2rem;
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .se-intro {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
+      gap: 3.5rem;
+    }
+  }
+  .se-desc {
+    font-size: 1.0625rem;
+  }
+  .se-cols {
+    display: grid;
+    gap: 1rem;
+  }
+  .se-col {
+    padding: 1rem 1.125rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .se-col h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.625rem;
+  }
+  .se-good h2 {
+    color: var(--color-delta-500);
+  }
+  .se-watch h2 {
+    color: var(--color-terracotta-600);
+  }
+  .se-col ul {
+    margin: 0;
+    padding-left: 1.0625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .se-col li {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
+
+  .se-exclusive-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .se-empty {
+    max-width: 26rem;
+    margin: 3rem auto;
+    text-align: center;
+  }
+  .se-empty h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .se-empty p {
+    font-size: 0.9375rem;
+    color: var(--fg-muted);
+    margin-bottom: 1rem;
+  }
+
+  .se-others-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .se-others {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .se-others a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    height: 100%;
+    padding: 0.9375rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+    transition: border-color 0.18s, transform 0.18s var(--ease-out-soft);
+  }
+  .se-others a:hover {
+    border-color: var(--accent);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .se-others a:hover {
+      transform: translateY(-2px);
+    }
+  }
+  .se-other-name {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+  .se-other-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .se-other-months {
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .se-other-tag {
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--fg-muted);
+  }
+</style>
