@@ -1,0 +1,489 @@
+---
+import districtGeoFull from '@data/geo/districts.json';
+import divisionGeoFull from '@data/geo/divisions.json';
+import districtGeoLite from '@data/geo/districts-lite.json';
+import divisionGeoLite from '@data/geo/divisions-lite.json';
+import { districts, divisions, placesByDistrict, places } from '@data/index';
+import type { Place } from '@lib/types';
+
+/**
+ * The interactive map of Bangladesh.
+ *
+ * The boundary geometry is pre-projected into SVG coordinates at build time
+ * (see scripts/build-geo.mjs), so this renders as plain inline SVG — no tile
+ * server, no map library, no external request, and it works with JavaScript
+ * disabled as a set of links.
+ */
+interface Props {
+  /** `divisions` draws 8 shapes; `districts` draws all 64. */
+  level?: 'divisions' | 'districts';
+  /** Highlight one region and dim the rest. */
+  focus?: string;
+  /** Plot individual destinations as pins. */
+  markers?: Place[];
+  /** Enable hover cards, filtering and the region panel. */
+  interactive?: boolean;
+  /** Shade regions by how many destinations they hold. */
+  choropleth?: boolean;
+  /** Show the district-completion tracker overlay. */
+  tracker?: boolean;
+  /**
+   * Geometry resolution. `full` is ~220 KB of path data and belongs only on
+   * the map page and the homepage band; `lite` is a coarser silhouette that
+   * is indistinguishable below about 400px and four times smaller.
+   */
+  detail?: 'full' | 'lite';
+  class?: string;
+  height?: string;
+}
+
+const {
+  level = 'districts',
+  focus,
+  markers,
+  interactive = true,
+  choropleth = true,
+  tracker = false,
+  detail = 'lite',
+  class: className = '',
+  height = 'auto',
+} = Astro.props;
+
+const districtGeo = detail === 'full' ? districtGeoFull : districtGeoLite;
+const divisionGeo = detail === 'full' ? divisionGeoFull : divisionGeoLite;
+
+const geo = level === 'districts' ? districtGeo : divisionGeo;
+const view = geo.view;
+
+/** Project lon/lat into the same SVG space as the boundary paths. */
+const { minLon, maxLat, k, scale } = geo.bounds;
+const project = (lat: number, lng: number) => ({
+  x: Math.round((lng - minLon) * k * scale * 10) / 10,
+  y: Math.round((maxLat - lat) * scale * 10) / 10,
+});
+
+/* ── Region rows: geometry joined to the editorial data ── */
+
+type Row = {
+  slug: string;
+  name: string;
+  nameBn: string;
+  href: string;
+  d: string;
+  cx: number;
+  cy: number;
+  bbox: number[];
+  count: number;
+  division: string;
+  hue: string;
+};
+
+const divisionHue = new Map(divisions.map((d) => [d.slug, d.hue]));
+
+const rows: Row[] =
+  level === 'districts'
+    ? districts.flatMap<Row>((district) => {
+        const shape = districtGeo.districts.find((g) => g.name === district.geoKey);
+        if (!shape) return [];
+        return [
+          {
+            slug: district.slug,
+            name: district.name,
+            nameBn: district.nameBn,
+            href: `/districts/${district.slug}`,
+            d: shape.d,
+            cx: shape.c[0],
+            cy: shape.c[1],
+            bbox: shape.bbox,
+            count: (placesByDistrict.get(district.slug) ?? []).length,
+            division: district.division,
+            hue: divisionHue.get(district.division) ?? 'delta',
+          },
+        ];
+      })
+    : divisions.flatMap<Row>((division) => {
+        const shape = divisionGeo.divisions.find((g) => g.name === division.geoKey);
+        if (!shape) return [];
+        return [
+          {
+            slug: division.slug,
+            name: division.name,
+            nameBn: division.nameBn,
+            href: `/divisions/${division.slug}`,
+            d: shape.d,
+            cx: shape.c[0],
+            cy: shape.c[1],
+            bbox: shape.bbox,
+            count: places.filter((p) => p.division === division.slug).length,
+            division: division.slug,
+            hue: division.hue,
+          },
+        ];
+      });
+
+const maxCount = Math.max(1, ...rows.map((r) => r.count));
+
+/** Five discrete shading steps read far better than a continuous ramp. */
+const step = (count: number) => (count === 0 ? 0 : Math.min(5, Math.ceil((count / maxCount) * 5)));
+
+/* ── Markers ── */
+
+const pins = (markers ?? [])
+  .map((p) => {
+    const coords = p.coords ?? districts.find((d) => d.slug === p.district)?.coords;
+    if (!coords) return null;
+    const { x, y } = project(coords.lat, coords.lng);
+    return { slug: p.slug, name: p.name, x, y, pop: p.popularity, gem: !!p.hiddenGem };
+  })
+  .filter((m): m is NonNullable<typeof m> => m !== null)
+  .sort((a, b) => a.pop - b.pop);
+
+/**
+ * With hundreds of markers the pins have to shrink or they merge into a blob
+ * over Dhaka and Chattogram — and the district labels underneath them become
+ * unreadable, so those are dropped too.
+ */
+const dense = pins.length > 40;
+
+const mapId = `map-${level}-${focus ?? 'all'}`;
+---
+
+<figure
+  class:list={['bdmap', `bdmap-${level}`, className]}
+  data-bd-map={interactive ? level : undefined}
+  data-focus={focus}
+  style={`--map-h:${height}`}
+>
+  <svg
+    viewBox={`0 0 ${view.w} ${view.h}`}
+    class="bdmap-svg"
+    role={interactive ? 'group' : 'img'}
+    aria-label={`Map of Bangladesh showing ${rows.length} ${level}`}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <filter id={`${mapId}-shadow`} x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="3" stdDeviation="6" flood-opacity="0.18" />
+      </filter>
+    </defs>
+
+    {/* Sea / backdrop */}
+    <rect width={view.w} height={view.h} fill="var(--map-water)" class="bdmap-water" />
+
+    <g filter={`url(#${mapId}-shadow)`}>
+      {
+        rows.map((row) => {
+          const s = choropleth ? step(row.count) : 0;
+          const dim = focus ? row.slug !== focus && row.division !== focus : false;
+          return (
+            <a
+              href={row.href}
+              class:list={['bdmap-region', { dim, focused: row.slug === focus }]}
+              data-region={row.slug}
+              data-name={row.name}
+              data-name-bn={row.nameBn}
+              data-count={row.count}
+              data-division={row.division}
+              data-cx={row.cx}
+              data-cy={row.cy}
+              aria-label={`${row.name} — ${row.count} destination${row.count === 1 ? '' : 's'}`}
+            >
+              <path d={row.d} class={`bdmap-shape step-${s} hue-${row.hue}`} />
+            </a>
+          );
+        })
+      }
+    </g>
+
+    {/* Division outlines drawn over the districts for legibility */}
+    {
+      level === 'districts' && (
+        <path d={divisionGeo.outline} class="bdmap-division-lines" fill="none" pointer-events="none" />
+      )
+    }
+
+    {/* Region labels — only where the shape is big enough to hold one */}
+    <g class="bdmap-labels" pointer-events="none">
+      {
+        (dense ? [] : rows)
+          .filter((r) => r.bbox[2] > (level === 'districts' ? 34 : 90))
+          .map((r) => (
+            <text x={r.cx} y={r.cy} class="bdmap-label" text-anchor="middle">
+              {r.name}
+            </text>
+          ))
+      }
+    </g>
+
+    {/* Destination pins */}
+    {
+      pins.length > 0 && (
+        <g class="bdmap-pins">
+          {pins.map((pin) => (
+            <a href={`/places/${pin.slug}`} class="bdmap-pin" data-pin={pin.slug} aria-label={pin.name}>
+              <circle cx={pin.x} cy={pin.y} r={dense ? 3 + pin.pop * 0.7 : 3 + pin.pop * 1.5} class:list={['pin-dot', { gem: pin.gem }]} />
+              <circle cx={pin.x} cy={pin.y} r={(dense ? 3 + pin.pop * 0.7 : 3 + pin.pop * 1.5) + 5} class="pin-halo" />
+              <title>{pin.name}</title>
+            </a>
+          ))}
+        </g>
+      )
+    }
+  </svg>
+
+  {/* Hover / focus card, positioned by script */}
+  {
+    interactive && (
+      <div class="bdmap-tip" data-map-tip hidden aria-hidden="true">
+        <p class="bdmap-tip-name" data-tip-name></p>
+        <p class="bdmap-tip-bn bn" lang="bn" data-tip-bn></p>
+        <p class="bdmap-tip-count" data-tip-count></p>
+      </div>
+    )
+  }
+
+  {
+    choropleth && (
+      <figcaption class="bdmap-legend">
+        <span class="bdmap-legend-label">Fewer destinations</span>
+        <span class="bdmap-legend-scale">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <i class={`legend-${s}`} />
+          ))}
+        </span>
+        <span class="bdmap-legend-label">More</span>
+      </figcaption>
+    )
+  }
+
+  {tracker && <div class="bdmap-tracker" data-district-tracker />}
+</figure>
+
+<style>
+  .bdmap {
+    position: relative;
+    margin: 0;
+    width: 100%;
+  }
+
+  .bdmap-svg {
+    display: block;
+    width: 100%;
+    height: var(--map-h, auto);
+    max-height: 100%;
+    overflow: visible;
+  }
+  .bdmap-water {
+    fill: transparent;
+  }
+
+  .bdmap-region {
+    cursor: pointer;
+    outline: none;
+  }
+  .bdmap-shape {
+    fill: var(--map-land);
+    stroke: var(--map-stroke);
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+    transition:
+      fill 0.18s var(--ease-out-soft),
+      stroke 0.18s,
+      opacity 0.2s;
+  }
+
+  /*
+   * Choropleth: a single sequential ramp from delta green through marigold to
+   * terracotta. Five hue ramps (one per division) looked pretty and read as
+   * mud — the point of the shading is "more here / less here", and that has to
+   * survive at thumbnail size. Division colour now lives in the legend only.
+   */
+  .step-0 {
+    fill: var(--map-land);
+  }
+  .bdmap-shape.step-1 { fill: var(--ramp-1); }
+  .bdmap-shape.step-2 { fill: var(--ramp-2); }
+  .bdmap-shape.step-3 { fill: var(--ramp-3); }
+  .bdmap-shape.step-4 { fill: var(--ramp-4); }
+  .bdmap-shape.step-5 { fill: var(--ramp-5); }
+
+  .bdmap {
+    --ramp-1: #cfe3d5;
+    --ramp-2: #9ccbb4;
+    --ramp-3: #67ab8e;
+    --ramp-4: #d99a4e;
+    --ramp-5: #c05f2d;
+  }
+  :global(:root[data-theme='dark']) .bdmap,
+  :global(.band-dark) .bdmap {
+    --ramp-1: #1f473e;
+    --ramp-2: #2c6b56;
+    --ramp-3: #3f9070;
+    --ramp-4: #b8803a;
+    --ramp-5: #c96030;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .bdmap {
+      --ramp-1: #1f473e;
+      --ramp-2: #2c6b56;
+      --ramp-3: #3f9070;
+      --ramp-4: #b8803a;
+      --ramp-5: #c96030;
+    }
+  }
+
+  .bdmap-region:hover .bdmap-shape,
+  .bdmap-region:focus-visible .bdmap-shape,
+  .bdmap-region[data-active] .bdmap-shape {
+    fill: var(--accent);
+    stroke: var(--accent);
+    stroke-width: 1.6;
+  }
+  .bdmap-region:focus-visible .bdmap-shape {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .bdmap-region.dim .bdmap-shape {
+    opacity: 0.42;
+  }
+  .bdmap-region.focused .bdmap-shape {
+    fill: var(--accent);
+    stroke: var(--accent);
+    stroke-width: 1.8;
+  }
+  .bdmap-region[data-visited] .bdmap-shape {
+    fill: var(--color-delta-400);
+    stroke: var(--color-delta-600);
+    stroke-width: 1.6;
+  }
+  .bdmap-region[data-hidden] .bdmap-shape {
+    opacity: 0.16;
+    pointer-events: none;
+  }
+
+  .bdmap-division-lines {
+    stroke: var(--fg);
+    stroke-width: 2.2;
+    opacity: 0.42;
+    stroke-linejoin: round;
+  }
+
+  .bdmap-label {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    fill: var(--fg);
+    opacity: 0.78;
+    paint-order: stroke;
+    stroke: var(--bg-raised);
+    stroke-width: 4.5px;
+    stroke-linejoin: round;
+  }
+  .bdmap-districts .bdmap-label {
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .bdmap-districts[data-show-labels] .bdmap-label {
+    opacity: 0.6;
+  }
+
+  .bdmap-pin {
+    cursor: pointer;
+  }
+  .pin-dot {
+    fill: #7a2f14;
+    stroke: #fff;
+    stroke-width: 1.4;
+    fill-opacity: 0.92;
+    transition: r 0.2s var(--ease-out-soft);
+  }
+  .pin-dot.gem {
+    fill: var(--color-marigold-500);
+  }
+  :global(:root[data-theme='dark']) .pin-dot,
+  :global(.band-dark) .pin-dot {
+    fill: #ffb07a;
+    stroke: #06100e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .pin-dot {
+      fill: #ffb07a;
+      stroke: #06100e;
+    }
+  }
+  .pin-halo {
+    fill: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .bdmap-pin:hover .pin-halo,
+  .bdmap-pin:focus-visible .pin-halo {
+    opacity: 0.25;
+  }
+
+  /* ── Tooltip ── */
+  .bdmap-tip {
+    position: absolute;
+    z-index: 5;
+    min-width: 8rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.625rem;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow-pop);
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 10px));
+    transition: opacity 0.12s;
+  }
+  .bdmap-tip-name {
+    font-weight: 650;
+    font-size: 0.875rem;
+    line-height: 1.2;
+  }
+  .bdmap-tip-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    line-height: 1.4;
+  }
+  .bdmap-tip-count {
+    margin-top: 0.1875rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Legend ── */
+  .bdmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.6875rem;
+    color: var(--fg-subtle);
+  }
+  .bdmap-legend-scale {
+    display: inline-flex;
+    gap: 2px;
+  }
+  .bdmap-legend-scale i {
+    display: block;
+    width: 1.5rem;
+    height: 0.5rem;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+  }
+  .legend-1 { background: var(--ramp-1); }
+  .legend-2 { background: var(--ramp-2); }
+  .legend-3 { background: var(--ramp-3); }
+  .legend-4 { background: var(--ramp-4); }
+  .legend-5 { background: var(--ramp-5); }
+
+  @media (max-width: 40rem) {
+    .bdmap-legend-label {
+      display: none;
+    }
+  }
+</style>
