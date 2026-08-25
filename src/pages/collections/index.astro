@@ -1,0 +1,211 @@
+---
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import SectionHead from '@components/SectionHead.astro';
+import Art from '@components/Art.astro';
+import Icon from '@components/Icon.astro';
+import { collections, resolvePlaces } from '@data/index';
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Collections', href: '/collections' },
+];
+
+const KIND: Record<string, { label: string; note: string }> = {
+  route: { label: 'Routes', note: 'Ordered itineraries, with distances between stops.' },
+  theme: { label: 'Themes', note: 'Destinations grouped by what connects them.' },
+  season: { label: 'Seasonal', note: 'Only worth doing in a particular window.' },
+  time: { label: 'By time available', note: 'Built around how many days you actually have.' },
+};
+
+const grouped = ['route', 'theme', 'season', 'time'].map((kind) => ({
+  kind,
+  meta: KIND[kind],
+  items: collections.filter((c) => c.kind === kind),
+}));
+---
+
+<Base
+  title="Curated collections and routes"
+  description="Themed routes and destination collections across Bangladesh — a terracotta trail through the north-west, a monsoon-only itinerary, ten days along the whole coast, and more."
+  path="/collections"
+  breadcrumbs={trail}
+>
+  <PageHero
+    eyebrow={`${collections.length} collections`}
+    title="Trips worth building a holiday around"
+    lead="Individual destinations are easy to find. What is harder is knowing which ones go together — which sites belong to the same story, which are on the same road, and which only make sense in the same month. That is what these are for."
+    trail={trail}
+  />
+
+  {
+    grouped.map(({ meta, items }) =>
+      items.length > 0 ? (
+        <section class="section-tight coll-section">
+          <div class="wrap">
+            <SectionHead
+              eyebrow={`${items.length} ${items.length === 1 ? 'collection' : 'collections'}`}
+              title={meta.label}
+              lead={meta.note}
+              as="h2"
+            />
+            <div class="coll-grid">
+              {items.map((c, i) => {
+                const places = resolvePlaces(c.places);
+                return (
+                  <article class="collcard">
+                    <div class="collcard-media">
+                      <Art art={c.art} alt="" ratio="16 / 9" loading={i < 3 ? 'eager' : 'lazy'} />
+                      <div class="collcard-scrim" />
+                      <div class="collcard-over">
+                        {c.days && (
+                          <span class="collcard-days">
+                            <Icon name="calendar" size={12} /> {c.days} days
+                          </span>
+                        )}
+                        <span class="collcard-count">
+                          <Icon name="pin" size={12} /> {places.length} places
+                        </span>
+                      </div>
+                    </div>
+                    <div class="collcard-body">
+                      <h3 class="collcard-title">
+                        <a href={`/collections/${c.slug}`} class="stretch">
+                          {c.title}
+                        </a>
+                      </h3>
+                      <p class="collcard-tagline">{c.tagline}</p>
+                      <p class="collcard-blurb">{c.description[0]}</p>
+                      <ul class="collcard-places">
+                        {places.slice(0, 4).map((p) => (
+                          <li>{p.name}</li>
+                        ))}
+                        {places.length > 4 && <li class="collcard-more">+{places.length - 4} more</li>}
+                      </ul>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null
+    )
+  }
+</Base>
+
+<style>
+  .coll-section + .coll-section {
+    border-top: 1px solid var(--line);
+  }
+  .coll-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: 1.25rem;
+  }
+  .collcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s var(--ease-out-soft);
+  }
+  .collcard:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-pop);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .collcard:hover {
+      transform: translateY(-3px);
+    }
+  }
+  .collcard-media {
+    position: relative;
+    overflow: hidden;
+  }
+  .collcard-media :global(.art) {
+    transition: transform 0.5s var(--ease-out-soft);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .collcard:hover .collcard-media :global(.art) {
+      transform: scale(1.045);
+    }
+  }
+  .collcard-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(6 16 14 / 0.6), transparent 55%);
+  }
+  .collcard-over {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    display: flex;
+    gap: 0.375rem;
+  }
+  .collcard-days,
+  .collcard-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1875rem 0.5rem;
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 0.92);
+    color: #16302b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+  .collcard-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 1rem 1.125rem 1.125rem;
+    flex: 1;
+  }
+  .collcard-title {
+    font-size: 1.1875rem;
+    line-height: 1.2;
+  }
+  .collcard-title a:hover {
+    color: var(--accent);
+  }
+  .collcard-tagline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--accent);
+  }
+  .collcard-blurb {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+  }
+  .collcard-places {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.4375rem;
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .collcard-places li:not(:last-child)::after {
+    content: ' ·';
+  }
+  .collcard-more {
+    font-weight: 700;
+    color: var(--accent);
+  }
+</style>

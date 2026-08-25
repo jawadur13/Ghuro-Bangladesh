@@ -1,0 +1,314 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import SectionHead from '@components/SectionHead.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import Icon from '@components/Icon.astro';
+import {
+  collections,
+  resolvePlaces,
+  getDistrict,
+  getDivision,
+  distanceKm,
+} from '@data/index';
+import { itineraryLd, collectionLd, artPath, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  collections.map((collection) => ({
+    params: { collection: collection.slug },
+    props: { collection },
+  }))) satisfies GetStaticPaths;
+
+const { collection } = Astro.props;
+
+const places = resolvePlaces(collection.places);
+const isRoute = collection.kind === 'route';
+
+const divisionsCovered = [...new Set(places.map((p) => p.division))].map(getDivision).filter(Boolean);
+const districtsCovered = [...new Set(places.map((p) => p.district))];
+
+/* For routes, show the leg distance between consecutive stops. */
+const legs = isRoute
+  ? places.map((p, i) => {
+      if (i === 0) return null;
+      const a = places[i - 1].coords ?? getDistrict(places[i - 1].district)?.coords;
+      const b = p.coords ?? getDistrict(p.district)?.coords;
+      return a && b ? Math.round(distanceKm(a, b)) : null;
+    })
+  : [];
+
+const totalKm = legs.reduce<number>((sum, km) => sum + (km ?? 0), 0);
+
+const others = collections.filter((c) => c.slug !== collection.slug).slice(0, 4);
+
+const KIND_LABEL: Record<string, string> = {
+  route: 'Route',
+  theme: 'Theme',
+  season: 'Seasonal',
+  time: 'By time available',
+};
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Collections', href: '/collections' },
+  { name: collection.title, href: `/collections/${collection.slug}` },
+];
+
+const jsonLd = isRoute
+  ? [itineraryLd(collection, places.map((p) => ({ name: p.name, slug: p.slug })))]
+  : [
+      collectionLd(
+        collection.title,
+        collection.description.join(' '),
+        `/collections/${collection.slug}`,
+        places.map((p) => ({ name: p.name, slug: p.slug }))
+      ),
+    ];
+---
+
+<Base
+  title={collection.title}
+  description={clamp(`${collection.tagline} ${collection.description[0]}`)}
+  path={`/collections/${collection.slug}`}
+  image={artPath(collection.art, 'day')}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <PageHero
+    eyebrow={`${KIND_LABEL[collection.kind]} · ${places.length} places`}
+    title={collection.title}
+    titleBn={collection.titleBn}
+    lead={collection.tagline}
+    trail={trail}
+    art={collection.art}
+    size="tall"
+  >
+    <dl class="col-hero-stats">
+      <div><dt>Destinations</dt><dd class="tnum">{places.length}</dd></div>
+      <div><dt>Districts</dt><dd class="tnum">{districtsCovered.length}</dd></div>
+      <div><dt>Divisions</dt><dd class="tnum">{divisionsCovered.length}</dd></div>
+      {collection.days && <div><dt>Suggested</dt><dd class="tnum">{collection.days} days</dd></div>}
+      {isRoute && totalKm > 0 && <div><dt>Route length</dt><dd class="tnum">≈{totalKm} km</dd></div>}
+    </dl>
+  </PageHero>
+
+  <section class="section-tight">
+    <div class="wrap col-intro">
+      <div class="prose-atlas col-prose">
+        {collection.description.map((p) => <p>{p}</p>)}
+      </div>
+      <aside class="col-map">
+        <BangladeshMap level="districts" markers={places} interactive={false} choropleth={false} />
+        <p class="col-map-note">
+          {places.length} destinations across {divisionsCovered.length}
+          {divisionsCovered.length === 1 ? ' division' : ' divisions'}
+        </p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="wrap">
+      <SectionHead
+        eyebrow={isRoute ? 'In order' : 'The list'}
+        title={isRoute ? 'The route' : 'What is in it'}
+        lead={
+          isRoute
+            ? 'Distances are straight-line between stops, not driving distance — Bangladeshi roads and rivers make the real journey longer.'
+            : undefined
+        }
+      />
+
+      {
+        isRoute ? (
+          <ol class="col-route">
+            {places.map((place, i) => (
+                <li class="col-stop">
+                  {i > 0 && legs[i] !== null && (
+                    <p class="col-leg">
+                      <Icon name="route" size={13} />
+                      <span class="tnum">≈{legs[i]} km</span> from {places[i - 1].name}
+                    </p>
+                  )}
+                  <div class="col-stop-card">
+                    <PlaceCard place={place} index={i + 1} loading={i < 4 ? 'eager' : 'lazy'} />
+                  </div>
+                </li>
+              ))}
+          </ol>
+        ) : (
+          <div class="grid-cards">
+            {places.map((place, i) => (
+              <PlaceCard place={place} loading={i < 6 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section col-others-band">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Keep planning"
+        title="Other collections"
+        href="/collections"
+        linkLabel="All collections"
+      />
+      <div class="col-others">
+        {
+          others.map((c) => (
+            <a href={`/collections/${c.slug}`} class="col-other">
+              <span class="col-other-kind">{KIND_LABEL[c.kind]}</span>
+              <strong class="col-other-title">{c.title}</strong>
+              <span class="col-other-tag">{c.tagline}</span>
+              <span class="col-other-count tnum">{c.places.length} places</span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .col-hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2.5rem;
+    margin: 1.75rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgb(244 241 232 / 0.18);
+  }
+  .col-hero-stats dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(244 241 232 / 0.62);
+  }
+  .col-hero-stats dd {
+    margin: 0.1875rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .col-intro {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 56rem) {
+    .col-intro {
+      grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+      gap: 3.5rem;
+    }
+  }
+  .col-map {
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .col-map-note {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--fg-subtle);
+  }
+
+  .col-route {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 44rem) {
+    .col-route {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+      gap: 1.25rem;
+    }
+  }
+  .col-leg {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .col-leg :global(svg) {
+    color: var(--accent);
+  }
+  .col-leg span {
+    font-weight: 700;
+    color: var(--fg-muted);
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .col-others-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .col-others {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0.875rem;
+  }
+  .col-other {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+    transition: border-color 0.18s, transform 0.18s var(--ease-out-soft);
+  }
+  .col-other:hover {
+    border-color: var(--accent);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .col-other:hover {
+      transform: translateY(-2px);
+    }
+  }
+  .col-other-kind {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .col-other-title {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.22;
+  }
+  .col-other-tag {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--fg-muted);
+    flex: 1;
+    margin-top: 0.125rem;
+  }
+  .col-other-count {
+    margin-top: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--fg-subtle);
+  }
+</style>
