@@ -1,0 +1,391 @@
+---
+import Base from '@/layouts/Base.astro';
+import Breadcrumbs from '@components/Breadcrumbs.astro';
+import Icon from '@components/Icon.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import { places, divisions, categories, featuredTags, stats } from '@data/index';
+
+/**
+ * The full search results page.
+ *
+ * Unlike the dialog, this is a shareable URL (`/search?q=…`). The results
+ * themselves are rendered on the client from the same index, but the page
+ * ships a complete browsable fallback so it is never a dead end — with
+ * JavaScript disabled it becomes a well-organised directory.
+ */
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Search', href: '/search' },
+];
+
+const popular = places.filter((p) => p.popularity >= 4).slice(0, 12);
+---
+
+<Base
+  title="Search destinations"
+  description={`Search ${stats.places} destinations across Bangladesh by name, district, category or interest — in English or Bengali.`}
+  path="/search"
+  breadcrumbs={trail}
+  noindex
+>
+  <div class="sp-shell">
+    <div class="wrap">
+      <Breadcrumbs trail={trail} />
+
+      <h1 class="sp-title">Search the atlas</h1>
+      <p class="sp-lead">
+        {stats.places} destinations, {stats.districts} districts, {stats.categories} categories.
+        Bengali names work, and so do older spellings — Chittagong finds Chattogram, Jessore finds
+        Jashore.
+      </p>
+
+      <form class="sp-form" role="search" action="/search" method="get">
+        <Icon name="search" size={20} class="sp-form-icon" />
+        <input
+          type="search"
+          name="q"
+          id="sp-input"
+          placeholder="Try “waterfall”, “Sylhet”, “জাফলং” or “mosque”…"
+          aria-label="Search destinations"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+        />
+        <button type="submit" class="btn btn-primary sp-submit">Search</button>
+      </form>
+
+      <p class="sp-status" data-sp-status role="status" aria-live="polite"></p>
+
+      <div class="sp-results" data-sp-results hidden></div>
+
+      <noscript>
+        <p class="sp-noscript">
+          Live search needs JavaScript. Everything is still browsable —
+          <a href="/explore">all destinations</a>, <a href="/districts">by district</a>,
+          <a href="/categories">by category</a> or <a href="/map">on the map</a>.
+        </p>
+      </noscript>
+
+      <div class="sp-fallback" data-sp-fallback>
+        <section class="sp-section">
+          <h2 class="sp-section-title">Browse by division</h2>
+          <ul class="sp-chips">
+            {divisions.map((d) => <li><a href={`/divisions/${d.slug}`} class="chip">{d.name}</a></li>)}
+          </ul>
+        </section>
+
+        <section class="sp-section">
+          <h2 class="sp-section-title">Browse by interest</h2>
+          <ul class="sp-chips">
+            {featuredTags.map((t) => <li><a href={`/tags/${t.slug}`} class="chip">{t.name}</a></li>)}
+          </ul>
+        </section>
+
+        <section class="sp-section">
+          <h2 class="sp-section-title">Browse by category</h2>
+          <ul class="sp-chips">
+            {categories.map((c) => <li><a href={`/categories/${c.slug}`} class="chip">{c.name}</a></li>)}
+          </ul>
+        </section>
+
+        <section class="sp-section">
+          <h2 class="sp-section-title">Or start with the best known</h2>
+          <div class="sp-grid">
+            {popular.map((p) => <PlaceCard place={p} variant="row" />)}
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .sp-shell {
+    padding-block: 5.5rem 3rem;
+  }
+  .sp-title {
+    margin-top: 1rem;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.05;
+  }
+  .sp-lead {
+    margin-top: 0.625rem;
+    max-width: 44rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+
+  .sp-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 42rem;
+    margin-top: 1.75rem;
+  }
+  :global(.sp-form-icon) {
+    position: absolute;
+    left: 1rem;
+    color: var(--fg-subtle);
+    pointer-events: none;
+  }
+  .sp-form input {
+    flex: 1;
+    min-width: 0;
+    height: 3.25rem;
+    padding: 0 1rem 0 2.875rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--bg-raised);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.16s, box-shadow 0.16s;
+  }
+  .sp-form input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .sp-form input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+  .sp-submit {
+    height: 3.25rem;
+    flex: none;
+  }
+
+  .sp-status {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--fg-subtle);
+  }
+
+  .sp-results {
+    margin-top: 1.5rem;
+  }
+  :global(.sp-hit-list) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  :global(.sp-hit) {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition: border-color 0.18s, transform 0.18s var(--ease-out-soft), box-shadow 0.18s;
+  }
+  :global(.sp-hit:hover) {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card);
+    transform: translateY(-2px);
+  }
+  :global(.sp-hit-art) {
+    width: 6rem;
+    flex: none;
+    object-fit: cover;
+    background: var(--bg-inset);
+  }
+  :global(.sp-hit-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.75rem 0.875rem;
+    min-width: 0;
+  }
+  :global(.sp-hit-name) {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  :global(.sp-hit-name mark) {
+    background: color-mix(in oklab, var(--color-marigold-300) 60%, transparent);
+    color: inherit;
+    border-radius: 3px;
+  }
+  :global(.sp-hit-where) {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  :global(.sp-hit-blurb) {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  :global(.sp-empty) {
+    max-width: 34rem;
+    padding: 2rem 0;
+  }
+  :global(.sp-empty h2) {
+    font-size: 1.375rem;
+    margin-bottom: 0.5rem;
+  }
+  :global(.sp-empty p) {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  :global(.sp-empty a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .sp-noscript {
+    margin-top: 1.5rem;
+    padding: 1rem 1.125rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-sunken);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .sp-noscript a {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  .sp-fallback {
+    margin-top: 2.5rem;
+  }
+  .sp-section + .sp-section {
+    margin-top: 2rem;
+  }
+  .sp-section-title {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.75rem;
+  }
+  .sp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .sp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 34rem) {
+    .sp-submit {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { loadIndex, search, highlight } from '@/scripts/search';
+
+  const input = document.querySelector<HTMLInputElement>('#sp-input');
+  const results = document.querySelector<HTMLElement>('[data-sp-results]');
+  const status = document.querySelector<HTMLElement>('[data-sp-status]');
+  const fallback = document.querySelector<HTMLElement>('[data-sp-fallback]');
+
+  if (input && results && status && fallback) {
+    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+    async function run(query: string, pushUrl: boolean): Promise<void> {
+      const q = query.trim();
+
+      if (!q) {
+        results!.hidden = true;
+        results!.innerHTML = '';
+        fallback!.hidden = false;
+        status!.textContent = '';
+        if (pushUrl) history.replaceState(null, '', '/search');
+        return;
+      }
+
+      status!.textContent = 'Searching…';
+      let docs;
+      try {
+        docs = await loadIndex();
+      } catch {
+        status!.textContent = '';
+        results!.hidden = false;
+        results!.innerHTML = `<div class="sp-empty">
+          <h2>Search is unavailable</h2>
+          <p>The destination index could not be loaded. Everything is still browsable below.</p>
+        </div>`;
+        return;
+      }
+
+      const hits = search(docs, q, 60);
+      fallback!.hidden = hits.length > 0;
+      results!.hidden = false;
+
+      if (!hits.length) {
+        status!.textContent = `No results for “${q}”`;
+        results!.innerHTML = `<div class="sp-empty">
+          <h2>Nothing matched “${esc(q)}”</h2>
+          <p>Try a district (Sylhet, Bandarban), a category (waterfall, mosque, haor)
+            or a Bengali name. Older spellings work too. Or browse the lists below.</p>
+        </div>`;
+        return;
+      }
+
+      status!.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'} for “${q}”`;
+      results!.innerHTML = `<ul class="sp-hit-list">
+        ${hits
+          .map(
+            (h) => `<li>
+              <a class="sp-hit" href="/places/${esc(h.doc.i)}">
+                <img class="sp-hit-art" src="/images/art/${esc(h.doc.f)}" alt="" width="96" height="96" loading="lazy" decoding="async">
+                <span class="sp-hit-body">
+                  <span class="sp-hit-name">${highlight(h.doc.n, q)}</span>
+                  <span class="sp-hit-where">${esc(h.doc.d)} · ${esc(h.doc.v)}</span>
+                  <span class="sp-hit-blurb">${esc(h.doc.s)}</span>
+                </span>
+              </a>
+            </li>`
+          )
+          .join('')}
+      </ul>`;
+
+      if (pushUrl) {
+        history.replaceState(null, '', `/search?q=${encodeURIComponent(q)}`);
+      }
+    }
+
+    let debounce: number | undefined;
+    input.addEventListener('input', () => {
+      window.clearTimeout(debounce);
+      const value = input.value;
+      debounce = window.setTimeout(() => void run(value, true), 140);
+    });
+
+    input.form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void run(input.value, true);
+    });
+
+    const initial = new URLSearchParams(location.search).get('q');
+    if (initial) {
+      input.value = initial;
+      void run(initial, false);
+    }
+    input.focus();
+  }
+</script>
