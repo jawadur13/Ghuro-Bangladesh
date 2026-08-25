@@ -1,0 +1,7 @@
+# Ghuro Bangladesh
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /favourites
+
+Sitemap: https://ghurobangladesh.com/sitemap-index.xml
