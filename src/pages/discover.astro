@@ -1,0 +1,424 @@
+---
+import Base from '@/layouts/Base.astro';
+import Breadcrumbs from '@components/Breadcrumbs.astro';
+import Icon from '@components/Icon.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import { categories, tags, stats, places, hiddenGems } from '@data/index';
+
+/**
+ * The discovery tool.
+ *
+ * The recommender needs slug → display-name mapping to score against the
+ * search index (which stores names, not slugs). Rather than duplicating the
+ * taxonomy in the client bundle, it is serialised here as a small data island.
+ */
+const labels: Record<string, string> = {};
+for (const c of categories) labels[c.slug] = c.name;
+for (const t of tags) labels[t.slug] = t.name;
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Where should I go?', href: '/discover' },
+];
+
+const roulette = [...places]
+  .filter((p) => p.popularity >= 2)
+  .sort(() => 0.5 - Math.random())
+  .slice(0, 3);
+const surprise = hiddenGems[Math.floor(hiddenGems.length / 2)] ?? places[0];
+---
+
+<Base
+  title="Where should I go in Bangladesh?"
+  description={`Answer five questions about when you are travelling, how long you have and what you enjoy — and get a shortlist from ${stats.places} destinations across Bangladesh.`}
+  path="/discover"
+  breadcrumbs={trail}
+>
+  <div class="dc-shell">
+    <div class="wrap">
+      <Breadcrumbs trail={trail} />
+
+      <header class="dc-head">
+        <p class="eyebrow">Discovery tool</p>
+        <h1 class="dc-title">Where should I go?</h1>
+        <p class="dc-lead">
+          Five questions, then a shortlist. No account, nothing sent anywhere — the whole thing runs
+          in your browser against the same {stats.places} destinations the rest of the site uses.
+        </p>
+      </header>
+
+      <div class="dc-card" data-discover>
+        <script is:inline type="application/json" data-discover-labels set:html={JSON.stringify(labels)} />
+
+        <div class="dc-progress-wrap">
+          <div
+            class="dc-progress"
+            data-discover-progress
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="5"
+            aria-valuenow="1"
+            aria-label="Question progress"
+          >
+            <span class="dc-progress-fill"></span>
+          </div>
+          <div class="dc-progress-actions">
+            <button type="button" class="dc-back" data-discover-back hidden>
+              <Icon name="chevronLeft" size={15} /> Back
+            </button>
+            <button type="button" class="dc-back" data-discover-restart hidden>
+              <Icon name="refresh" size={14} /> Start again
+            </button>
+          </div>
+        </div>
+
+        <div data-discover-steps></div>
+        <div data-discover-results hidden></div>
+
+        <noscript>
+          <div class="dc-noscript">
+            <h2>This tool needs JavaScript</h2>
+            <p>
+              It runs entirely in your browser, so it cannot work without it. Everything is still
+              browsable: <a href="/explore">all destinations</a>,
+              <a href="/categories">by category</a>, <a href="/seasons">by season</a> or
+              <a href="/map">on the map</a>.
+            </p>
+          </div>
+        </noscript>
+      </div>
+
+      <!-- Roulette -->
+      <section class="dc-alt">
+        <h2 class="dc-alt-title">
+          <Icon name="dice" size={18} /> Or just be told
+        </h2>
+        <p class="dc-alt-lead">
+          Three destinations picked at random from the atlas, plus one hidden gem we think deserves
+          more attention than it gets.
+        </p>
+        <div class="dc-roulette">
+          {roulette.map((p) => <PlaceCard place={p} />)}
+          <PlaceCard place={surprise} />
+        </div>
+        <p class="dc-alt-note">
+          <Icon name="refresh" size={13} /> Reload the page for a different set.
+        </p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .dc-shell {
+    padding-block: 5.5rem 3rem;
+  }
+  .dc-head {
+    max-width: 44rem;
+    margin-top: 1rem;
+  }
+  .dc-title {
+    margin-top: 0.5rem;
+    font-size: clamp(2rem, 5.4vw, 3.25rem);
+    line-height: 1.05;
+  }
+  .dc-lead {
+    margin-top: 0.75rem;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+
+  .dc-card {
+    margin-top: 2rem;
+    padding: clamp(1.25rem, 3.5vw, 2.5rem);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--bg-raised);
+    box-shadow: var(--shadow-card);
+    min-height: 24rem;
+  }
+
+  .dc-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .dc-progress {
+    --progress: 20;
+    flex: 1;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--bg-inset);
+    overflow: hidden;
+  }
+  .dc-progress-fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--progress) * 1%);
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--color-delta-500), var(--color-terracotta-500));
+    transition: width 0.35s var(--ease-out-soft);
+  }
+  .dc-progress-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex: none;
+  }
+  .dc-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--fg-subtle);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem;
+  }
+  .dc-back:hover {
+    color: var(--accent);
+  }
+
+  /* ── Question view (rendered by the client module) ── */
+  :global(.dq-step) {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  :global(.dq-prompt) {
+    margin-top: 0.5rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3.6vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+  }
+  :global(.dq-hint) {
+    margin-top: 0.625rem;
+    max-width: 42rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  :global(.dq-answers) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: 0.625rem;
+    margin-top: 1.75rem;
+  }
+  :global(.dq-answer) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    padding: 1rem 1.125rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.75rem;
+    background: var(--bg-raised);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.16s,
+      background-color 0.16s,
+      transform 0.16s var(--ease-out-soft);
+  }
+  :global(.dq-answer:hover) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    :global(.dq-answer:hover) {
+      transform: translateY(-2px);
+    }
+  }
+  :global(.dq-answer[aria-pressed='true']) {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  :global(.dq-answer-label) {
+    font-weight: 650;
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+  :global(.dq-answer-note) {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  :global(.dq-answer[aria-pressed='true'] .dq-answer-note) {
+    color: color-mix(in oklab, var(--accent-fg) 78%, transparent);
+  }
+  :global(.dq-next) {
+    margin-top: 1.5rem;
+  }
+  :global(.dq-next:disabled) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* ── Results view ── */
+  :global(.dr-head) {
+    margin-bottom: 1.5rem;
+  }
+  :global(.dr-title) {
+    margin-top: 0.5rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3.4vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  :global(.dr-summary) {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--fg-subtle);
+  }
+  :global(.dr-grid) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+  }
+  :global(.dr-card) {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s var(--ease-out-soft);
+  }
+  :global(.dr-card:hover) {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    :global(.dr-card:hover) {
+      transform: translateY(-3px);
+    }
+  }
+  :global(.dr-art) {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background: var(--bg-inset);
+  }
+  :global(.dr-body) {
+    padding: 0.875rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    flex: 1;
+  }
+  :global(.dr-where) {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  :global(.dr-name) {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  :global(.dr-blurb) {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+    flex: 1;
+  }
+  :global(.dr-why) {
+    margin-top: 0.625rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.6875rem;
+    color: var(--fg-subtle);
+  }
+  :global(.dr-why em) {
+    font-style: normal;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  :global(.dr-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+  }
+  :global(.dr-empty) {
+    max-width: 34rem;
+    padding: 2rem 0;
+  }
+  :global(.dr-empty h2) {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  :global(.dr-empty p) {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  :global(.dr-empty a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .dc-noscript {
+    padding: 1.5rem 0;
+  }
+  .dc-noscript h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .dc-noscript p {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+  }
+  .dc-noscript a {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  .dc-alt {
+    margin-top: 3.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .dc-alt-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: clamp(1.25rem, 2.6vw, 1.625rem);
+  }
+  .dc-alt-lead {
+    margin-top: 0.5rem;
+    max-width: 42rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .dc-roulette {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .dc-alt-note {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+</style>
