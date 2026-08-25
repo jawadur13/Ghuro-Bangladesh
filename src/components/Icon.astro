@@ -1,0 +1,46 @@
+---
+/**
+ * A single inline-SVG icon set. Everything is drawn on a 24×24 grid with a
+ * 1.7 stroke so the whole set reads as one family at any size.
+ */
+import { ICONS, type IconKey } from '@lib/icons';
+
+interface Props {
+  name: IconKey;
+  size?: number;
+  class?: string;
+  /** Give the icon an accessible label; otherwise it is decorative. */
+  label?: string;
+}
+
+const { name, size = 20, class: className = '', label } = Astro.props;
+
+const d = ICONS[name] ?? ICONS.info;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.7"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class:list={['icon', className]}
+  role={label ? 'img' : undefined}
+  aria-hidden={label ? undefined : 'true'}
+  aria-label={label}
+  focusable="false"
+>
+  {label && <title>{label}</title>}
+  <path d={d}></path>
+</svg>
+
+<style>
+  .icon {
+    flex: none;
+    display: block;
+  }
+</style>
