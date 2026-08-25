@@ -1,0 +1,77 @@
+---
+import type { ArtRef } from '@lib/types';
+
+/**
+ * Renders a destination's procedural artwork.
+ *
+ * The SVGs are pre-generated into /public/images/art by scripts/generate-artwork.mjs,
+ * so this is a plain <img> — cacheable, lazy-loadable and parallel-downloadable,
+ * rather than kilobytes of inline markup repeated across a grid.
+ */
+interface Props {
+  art: ArtRef;
+  alt: string;
+  class?: string;
+  /** `eager` for above-the-fold heroes; everything else stays lazy. */
+  loading?: 'lazy' | 'eager';
+  /** Rendered aspect ratio. The SVG itself always slices to fill. */
+  ratio?: string;
+  /** Nudges the browser's fetch queue for hero images. */
+  priority?: boolean;
+}
+
+/** Default mood per art family — must match FAMILY in scripts/generate-artwork.mjs. */
+const DEFAULT_MOOD: Record<string, string> = {
+  sea: 'dusk',
+  island: 'day',
+  hills: 'dawn',
+  forest: 'monsoon',
+  mangrove: 'dawn',
+  river: 'dusk',
+  lake: 'day',
+  haor: 'monsoon',
+  waterfall: 'monsoon',
+  tea: 'monsoon',
+  ruins: 'day',
+  mosque: 'dusk',
+  temple: 'dawn',
+  stupa: 'day',
+  mansion: 'dusk',
+  fort: 'day',
+  city: 'dusk',
+  bridge: 'dusk',
+  field: 'dawn',
+  market: 'day',
+  village: 'dawn',
+  garden: 'day',
+};
+
+const { art, alt, class: className = '', loading = 'lazy', ratio = '3 / 2', priority = false } = Astro.props;
+
+const mood = art.mood ?? DEFAULT_MOOD[art.key] ?? 'day';
+const src = `/images/art/${art.key}-${mood}-${art.seed}.svg`;
+---
+
+<img
+  src={src}
+  alt={alt}
+  width="1200"
+  height="800"
+  loading={loading}
+  decoding={priority ? 'sync' : 'async'}
+  fetchpriority={priority ? 'high' : undefined}
+  class:list={['art', className]}
+  style={`--art-ratio:${ratio}`}
+/>
+
+<style>
+  .art {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: var(--art-ratio);
+    object-fit: cover;
+    background: var(--bg-inset);
+    color: transparent;
+  }
+</style>
