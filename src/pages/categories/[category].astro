@@ -1,0 +1,313 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import FilterBar from '@components/FilterBar.astro';
+import SectionHead from '@components/SectionHead.astro';
+import Icon from '@components/Icon.astro';
+import { categories, placesInCategory, divisions, categoryGroups } from '@data/index';
+import { categoryTitle, collectionLd, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  categories.map((category) => ({
+    params: { category: category.slug },
+    props: { category },
+  }))) satisfies GetStaticPaths;
+
+const { category } = Astro.props;
+
+const places = placesInCategory(category.slug).sort(
+  (a, b) => b.popularity - a.popularity || a.name.localeCompare(b.name)
+);
+
+/* Where in the country this category actually concentrates. */
+const byDivision = divisions
+  .map((d) => ({ division: d, count: places.filter((p) => p.division === d.slug).length }))
+  .filter((r) => r.count > 0)
+  .sort((a, b) => b.count - a.count);
+
+const topDivision = byDivision[0];
+const group = categoryGroups.find((g) => g.slug === category.group);
+const siblings = categories.filter((c) => c.group === category.group && c.slug !== category.slug);
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Categories', href: '/categories' },
+  { name: category.name, href: `/categories/${category.slug}` },
+];
+
+const heroArt = { key: category.art, seed: 1000 } as const;
+
+const jsonLd = [
+  collectionLd(
+    categoryTitle(category),
+    category.description,
+    `/categories/${category.slug}`,
+    places.map((p) => ({ name: p.name, slug: p.slug }))
+  ),
+];
+---
+
+<Base
+  title={categoryTitle(category)}
+  description={clamp(`${category.tagline} ${category.description}`)}
+  path={`/categories/${category.slug}`}
+  image={`/images/art/${category.art}-${'day'}-1000.svg`}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <PageHero
+    eyebrow={`${places.length} ${places.length === 1 ? 'destination' : 'destinations'}`}
+    title={category.name}
+    titleBn={category.nameBn}
+    lead={category.tagline}
+    trail={trail}
+    art={heroArt}
+    size="tall"
+  />
+
+  <section class="section-tight">
+    <div class="wrap cat-intro">
+      <div class="cat-blurb">
+        <p class="prose-atlas">{category.description}</p>
+        {
+          topDivision && (
+            <p class="cat-where">
+              <Icon name="pin" size={15} />
+              <span>
+                Most concentrated in{' '}
+                <a href={`/divisions/${topDivision.division.slug}`}>{topDivision.division.name}</a>{' '}
+                division, with <strong>{topDivision.count}</strong> of the {places.length}.
+              </span>
+            </p>
+          )
+        }
+      </div>
+
+      {
+        byDivision.length > 1 && (
+          <div class="cat-spread">
+            <h2 class="cat-sub">Across the country</h2>
+            <ul class="cat-bars">
+              {byDivision.map(({ division, count }) => (
+                <li>
+                  <a href={`/divisions/${division.slug}`}>
+                    <span class="cat-bar-name">{division.name}</span>
+                    <span class="cat-bar-track">
+                      <span
+                        class="cat-bar-fill"
+                        style={`--w:${Math.round((count / byDivision[0].count) * 100)}`}
+                      />
+                    </span>
+                    <span class="cat-bar-count tnum">{count}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <div class="wrap">
+    <h2 class="sr-only">All {category.name.toLowerCase()}</h2>
+    <FilterBar total={places.length} show={['division', 'tag']} />
+
+    <div class="grid-cards" data-filter-grid>
+      {
+        places.map((p, i) => (
+          <div data-filter-item class="defer-paint">
+            <PlaceCard place={p} loading={i < 9 ? 'eager' : 'lazy'} />
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="cat-empty" data-filter-empty hidden>
+      <h2>Nothing matches those filters</h2>
+      <p>Try removing a filter, or browse the full {category.name.toLowerCase()} list.</p>
+      <button type="button" class="btn btn-primary" data-filter-clear>Clear filters</button>
+    </div>
+  </div>
+
+  {
+    siblings.length > 0 && (
+      <section class="section cat-siblings-band">
+        <div class="wrap">
+          <SectionHead
+            eyebrow={group?.name}
+            title="Related categories"
+            href="/categories"
+            linkLabel="All categories"
+          />
+          <div class="cat-sibling-grid">
+            {siblings.map((c) => (
+              <a href={`/categories/${c.slug}`} class="cat-sibling">
+                <Icon name={c.icon} size={18} />
+                <span>
+                  <strong>{c.name}</strong>
+                  <em>{placesInCategory(c.slug).length} places</em>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .cat-intro {
+    display: grid;
+    gap: 2rem;
+    align-items: start;
+  }
+  @media (min-width: 56rem) {
+    .cat-intro {
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+      gap: 3.5rem;
+    }
+  }
+  .cat-where {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 0.9375rem;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+  .cat-where :global(svg) {
+    color: var(--accent);
+    margin-top: 0.2rem;
+    flex: none;
+  }
+  .cat-where a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .cat-where strong {
+    color: var(--fg);
+  }
+
+  .cat-sub {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.75rem;
+  }
+  .cat-bars {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .cat-bars a {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr 1.75rem;
+    align-items: center;
+    min-height: 24px;
+    gap: 0.625rem;
+    font-size: 0.8125rem;
+  }
+  .cat-bars a:hover .cat-bar-name {
+    color: var(--accent);
+  }
+  .cat-bar-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cat-bar-track {
+    height: 0.5rem;
+    border-radius: var(--radius-pill);
+    background: var(--bg-inset);
+    overflow: hidden;
+  }
+  .cat-bar-fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--w) * 1%);
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+  }
+  .cat-bar-count {
+    text-align: right;
+    font-weight: 700;
+    color: var(--fg-subtle);
+    font-size: 0.75rem;
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+  }
+
+  .cat-empty {
+    max-width: 26rem;
+    margin: 3rem auto 4rem;
+    text-align: center;
+  }
+  .cat-empty h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .cat-empty p {
+    font-size: 0.9375rem;
+    color: var(--fg-muted);
+    margin-bottom: 1rem;
+  }
+
+  .cat-siblings-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .cat-sibling-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+    gap: 0.625rem;
+  }
+  .cat-sibling {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--bg-raised);
+    transition: border-color 0.16s;
+  }
+  .cat-sibling:hover {
+    border-color: var(--accent);
+  }
+  .cat-sibling :global(svg) {
+    color: var(--accent);
+    flex: none;
+  }
+  .cat-sibling span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .cat-sibling strong {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .cat-sibling em {
+    font-style: normal;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+</style>

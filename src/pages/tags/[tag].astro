@@ -1,0 +1,176 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import FilterBar from '@components/FilterBar.astro';
+import SectionHead from '@components/SectionHead.astro';
+import { tags, placesWithTag, getCategory } from '@data/index';
+import { collectionLd, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  tags
+    .filter((tag) => placesWithTag(tag.slug).length > 0)
+    .map((tag) => ({ params: { tag: tag.slug }, props: { tag } }))) satisfies GetStaticPaths;
+
+const { tag } = Astro.props;
+
+const places = placesWithTag(tag.slug).sort(
+  (a, b) => b.popularity - a.popularity || a.name.localeCompare(b.name)
+);
+
+/* Art for the hero: borrow the most common category among the results. */
+const catCount = new Map<string, number>();
+for (const p of places) catCount.set(p.categories[0], (catCount.get(p.categories[0]) ?? 0) + 1);
+const dominant = [...catCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+const heroArt = { key: getCategory(dominant ?? 'river')?.art ?? 'river', seed: 1000 } as const;
+
+const related = tags
+  .filter((t) => t.slug !== tag.slug && placesWithTag(t.slug).length > 0)
+  .map((t) => {
+    const overlap = places.filter((p) => p.tags.includes(t.slug)).length;
+    return { tag: t, overlap };
+  })
+  .filter((r) => r.overlap >= 3)
+  .sort((a, b) => b.overlap - a.overlap)
+  .slice(0, 10);
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Categories', href: '/categories' },
+  { name: tag.name, href: `/tags/${tag.slug}` },
+];
+
+const jsonLd = [
+  collectionLd(
+    `${tag.name} in Bangladesh`,
+    tag.description,
+    `/tags/${tag.slug}`,
+    places.map((p) => ({ name: p.name, slug: p.slug }))
+  ),
+];
+---
+
+<Base
+  title={`${tag.name} — Bangladesh destinations`}
+  description={clamp(`${tag.description} ${places.length} destinations across Bangladesh.`)}
+  path={`/tags/${tag.slug}`}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <PageHero
+    eyebrow={`${places.length} ${places.length === 1 ? 'destination' : 'destinations'}`}
+    title={tag.name}
+    titleBn={tag.nameBn}
+    lead={tag.description}
+    trail={trail}
+    art={heroArt}
+    size="tall"
+  />
+
+  <div class="wrap">
+    <h2 class="sr-only">Destinations tagged {tag.name}</h2>
+    <FilterBar total={places.length} show={['division', 'category']} />
+
+    <div class="grid-cards" data-filter-grid>
+      {
+        places.map((p, i) => (
+          <div data-filter-item class="defer-paint">
+            <PlaceCard place={p} loading={i < 9 ? 'eager' : 'lazy'} />
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="tag-empty" data-filter-empty hidden>
+      <h2>Nothing matches those filters</h2>
+      <p>Try removing a filter to see the full {tag.name.toLowerCase()} list again.</p>
+      <button type="button" class="btn btn-primary" data-filter-clear>Clear filters</button>
+    </div>
+  </div>
+
+  {
+    related.length > 0 && (
+      <section class="section tag-related-band">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Often together"
+            title="Related interests"
+            lead="Tags that overlap heavily with this one — useful for narrowing a shortlist."
+            href="/categories"
+            linkLabel="All categories and tags"
+          />
+          <ul class="tag-related">
+            {related.map(({ tag: t, overlap }) => (
+              <li>
+                <a href={`/tags/${t.slug}`} class="tag-related-item">
+                  <span class="tag-related-name">{t.name}</span>
+                  <span class="tag-related-count tnum">{overlap} shared</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+  }
+  .tag-empty {
+    max-width: 26rem;
+    margin: 3rem auto 4rem;
+    text-align: center;
+  }
+  .tag-empty h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .tag-empty p {
+    font-size: 0.9375rem;
+    color: var(--fg-muted);
+    margin-bottom: 1rem;
+  }
+
+  .tag-related-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .tag-related {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .tag-related-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--bg-raised);
+    transition: border-color 0.16s, color 0.16s;
+  }
+  .tag-related-item:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .tag-related-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .tag-related-count {
+    font-size: 0.6875rem;
+    color: var(--fg-subtle);
+  }
+</style>

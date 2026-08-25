@@ -1,0 +1,175 @@
+---
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import SectionHead from '@components/SectionHead.astro';
+import Icon from '@components/Icon.astro';
+import { categories, categoryGroups, placesInCategory, tags, stats } from '@data/index';
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Categories', href: '/categories' },
+];
+
+const grouped = categoryGroups.map((group) => ({
+  group,
+  items: categories
+    .filter((c) => c.group === group.slug)
+    .map((c) => ({ category: c, count: placesInCategory(c.slug).length }))
+    .sort((a, b) => b.count - a.count),
+}));
+---
+
+<Base
+  title="Destination categories"
+  description="Browse Bangladesh by kind: beaches, haors, waterfalls, mosques, temples, archaeological sites, tea gardens, forests and more — with the number of destinations in each."
+  path="/categories"
+  breadcrumbs={trail}
+>
+  <PageHero
+    eyebrow="Browse by kind"
+    title="What are you looking for?"
+    lead={`${stats.categories} categories across ${stats.places} destinations. Most places belong to more than one — Kuakata is a beach, a viewpoint and a forest, and it is listed under all three.`}
+    trail={trail}
+  />
+
+  {
+    grouped.map(({ group, items }) => (
+      <section class="section-tight cat-section">
+        <div class="wrap">
+          <SectionHead eyebrow={`${items.length} categories`} title={group.name} lead={group.note} as="h2" />
+          <div class="cat-grid">
+            {items.map((row) => (
+              <a href={`/categories/${row.category.slug}`} class="catbox">
+                <span class="catbox-icon">
+                  <Icon name={row.category.icon} size={20} />
+                </span>
+                <span class="catbox-body">
+                  <span class="catbox-head">
+                    <span class="catbox-name">{row.category.name}</span>
+                    <span class="catbox-count tnum">{row.count}</span>
+                  </span>
+                  <span class="catbox-bn bn" lang="bn">
+                    {row.category.nameBn}
+                  </span>
+                  <span class="catbox-tag">{row.category.tagline}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <section class="section interest-band">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Another way in"
+        title="Browse by interest instead"
+        lead="Categories describe what a place is. Tags describe how it works for you — how long it takes, who it suits, and whether it is worth the trip in the season you are travelling."
+      />
+      <ul class="interest-list">
+        {
+          tags.map((t) => (
+            <li>
+              <a href={`/tags/${t.slug}`} class:list={['chip', { 'chip-featured': t.featured }]}>
+                {t.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .cat-section + .cat-section {
+    border-top: 1px solid var(--line);
+  }
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 0.875rem;
+  }
+  .catbox {
+    display: flex;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s var(--ease-out-soft);
+  }
+  .catbox:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .catbox:hover {
+      transform: translateY(-2px);
+    }
+  }
+  .catbox-icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    flex: none;
+  }
+  .catbox-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .catbox-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .catbox-name {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .catbox-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--fg-subtle);
+    flex: none;
+  }
+  .catbox-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    margin-top: 0.0625rem;
+  }
+  .catbox-tag {
+    margin-top: 0.4375rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
+
+  .interest-band {
+    background: var(--bg-sunken);
+    border-top: 1px solid var(--line);
+  }
+  .interest-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  :global(.chip-featured) {
+    border-color: var(--line-strong);
+    font-weight: 650;
+  }
+</style>
