@@ -1,0 +1,270 @@
+---
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import SectionHead from '@components/SectionHead.astro';
+import Icon from '@components/Icon.astro';
+import { divisions, districtsIn, placesInDistrict, stats } from '@data/index';
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: 'Districts', href: '/districts' },
+];
+
+const byDivision = divisions.map((division) => ({
+  division,
+  districts: districtsIn(division.slug).map((d) => ({
+    district: d,
+    count: placesInDistrict(d.slug).length,
+  })),
+}));
+---
+
+<Base
+  title="All 64 districts of Bangladesh"
+  description="Every one of Bangladesh's 64 districts, grouped by division, with what each is known for and how many destinations it holds. Track which ones you have been to."
+  path="/districts"
+  breadcrumbs={trail}
+>
+  <div data-district-tracker data-total="64" hidden></div>
+
+  <PageHero
+    eyebrow="The full list"
+    title="All 64 districts"
+    lead="Bangladesh has sixty-four districts, and most people can name maybe fifteen. Every one of them has a page here — including the ones with a single entry, because an honest atlas says so rather than padding."
+    trail={trail}
+  />
+
+  <!-- ══════════ TRACKER ══════════ -->
+  <section class="section-tight">
+    <div class="wrap">
+      <div class="tracker">
+        <div class="tracker-text">
+          <p class="eyebrow">District tracker</p>
+          <h2 class="tracker-title">
+            You have been to <span class="tnum" data-visited-count>0</span> of {stats.districts}
+          </h2>
+          <p class="tracker-lead">
+            Mark districts as you go. It is stored on this device only — no account, no server,
+            nothing leaves your browser. <span class="tnum" data-visited-remaining>{stats.districts}</span>
+            to go.
+          </p>
+          <div class="tracker-bar" data-visited-bar>
+            <span class="tracker-bar-fill"></span>
+          </div>
+          <p class="tracker-pct">
+            <span class="tnum" data-visited-pct>0</span>% complete
+          </p>
+          <button type="button" class="btn btn-ghost btn-sm tracker-reset" data-visited-reset hidden>
+            <Icon name="refresh" size={14} /> Reset tracker
+          </button>
+        </div>
+
+        <div class="tracker-map">
+          <BangladeshMap level="districts" tracker choropleth={false} />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ LIST BY DIVISION ══════════ -->
+  {
+    byDivision.map(({ division, districts }) => (
+      <section class="section-tight dlist-section">
+        <div class="wrap">
+          <SectionHead
+            eyebrow={`${districts.length} districts`}
+            title={`${division.name} Division`}
+            lead={division.tagline}
+            href={`/divisions/${division.slug}`}
+            linkLabel="Division guide"
+            as="h2"
+          />
+          <ul class="dlist">
+            {districts.map(({ district, count }) => (
+              <li class="dlist-item" data-visit-row>
+                <a href={`/districts/${district.slug}`} class="dlist-link">
+                  <span class="dlist-main">
+                    <span class="dlist-name">{district.name}</span>
+                    <span class="dlist-bn bn" lang="bn">
+                      {district.nameBn}
+                    </span>
+                  </span>
+                  <span class="dlist-tag">{district.tagline}</span>
+                  <span class="dlist-count tnum">{count}</span>
+                </a>
+                <button
+                  type="button"
+                  class="dlist-check"
+                  data-visit-toggle={district.slug}
+                  data-visit-name={district.name}
+                  aria-pressed="false"
+                  aria-label={`Mark ${district.name} as visited`}
+                  title={`Mark ${district.name} as visited`}
+                >
+                  <Icon name="check" size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    ))
+  }
+</Base>
+
+<style>
+  .tracker {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-sunken);
+  }
+  @media (min-width: 56rem) {
+    .tracker {
+      grid-template-columns: 1fr minmax(14rem, 20rem);
+      gap: 3rem;
+    }
+  }
+  .tracker-title {
+    margin-top: 0.5rem;
+    font-size: clamp(1.5rem, 3.4vw, 2.25rem);
+    line-height: 1.1;
+  }
+  .tracker-title span {
+    color: var(--accent);
+  }
+  .tracker-lead {
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+    max-width: 34rem;
+  }
+  .tracker-bar {
+    --pct: 0;
+    height: 0.625rem;
+    margin-top: 1.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--bg-inset);
+    overflow: hidden;
+  }
+  .tracker-bar-fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--pct) * 1%);
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--color-delta-500), var(--color-terracotta-500));
+    transition: width 0.5s var(--ease-out-soft);
+  }
+  .tracker-pct {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+  }
+  .tracker-reset {
+    margin-top: 1rem;
+  }
+  .tracker-map {
+    max-width: 20rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .dlist-section + .dlist-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .dlist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 0.25rem 1.5rem;
+  }
+  .dlist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .dlist-item[data-visited] .dlist-name {
+    color: var(--color-delta-500);
+  }
+  .dlist-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.625rem 0;
+    transition: color 0.16s;
+  }
+  .dlist-link:hover .dlist-name {
+    color: var(--accent);
+  }
+  .dlist-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4375rem;
+    flex: none;
+  }
+  .dlist-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+  .dlist-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .dlist-tag {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dlist-count {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--fg-subtle);
+    min-width: 1.5rem;
+    text-align: right;
+  }
+  .dlist-check {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--line-strong);
+    cursor: pointer;
+    transition: all 0.16s;
+  }
+  .dlist-check:hover {
+    border-color: var(--color-delta-400);
+    color: var(--color-delta-400);
+  }
+  .dlist-check[aria-pressed='true'] {
+    background: var(--color-delta-500);
+    border-color: var(--color-delta-500);
+    color: #fff;
+  }
+
+  @media (max-width: 32rem) {
+    .dlist-tag {
+      display: none;
+    }
+  }
+</style>

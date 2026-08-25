@@ -1,0 +1,581 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '@/layouts/Base.astro';
+import PageHero from '@components/PageHero.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import SectionHead from '@components/SectionHead.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import Icon from '@components/Icon.astro';
+import {
+  districts,
+  getDivision,
+  getDistrict,
+  placesInDistrict,
+  getCategory,
+  distanceKm,
+  places as allPlaces,
+} from '@data/index';
+import { districtTitle, collectionLd, artPath, clamp } from '@lib/seo';
+
+export const getStaticPaths = (() =>
+  districts.map((district) => ({
+    params: { district: district.slug },
+    props: { district },
+  }))) satisfies GetStaticPaths;
+
+const { district } = Astro.props;
+
+const division = getDivision(district.division)!;
+const places = placesInDistrict(district.slug);
+const featured = places.filter((p) => p.featured || p.popularity >= 4);
+const gems = places.filter((p) => p.hiddenGem && !featured.some((f) => f.slug === p.slug));
+const others = places.filter(
+  (p) => !featured.some((f) => f.slug === p.slug) && !gems.some((g) => g.slug === p.slug)
+);
+
+/* Categories represented in this district. */
+const categoryCounts = new Map<string, number>();
+for (const p of places) for (const c of p.categories) categoryCounts.set(c, (categoryCounts.get(c) ?? 0) + 1);
+const districtCategories = [...categoryCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([slug, count]) => ({ category: getCategory(slug)!, count }))
+  .filter((r) => r.category);
+
+const neighbours = district.borders
+  .map(getDistrict)
+  .filter((d): d is NonNullable<typeof d> => !!d)
+  .map((d) => ({
+    district: d,
+    count: placesInDistrict(d.slug).length,
+    km: Math.round(distanceKm(district.coords, d.coords)),
+  }))
+  .sort((a, b) => a.km - b.km);
+
+/**
+ * When a district is thin, point outward rather than showing an empty page:
+ * the nearest well-stocked destinations, wherever they are.
+ */
+const nearbyElsewhere =
+  places.length < 4
+    ? allPlaces
+        .filter((p) => p.district !== district.slug)
+        .map((p) => {
+          const point = p.coords ?? getDistrict(p.district)?.coords;
+          return point ? { place: p, km: distanceKm(district.coords, point) } : null;
+        })
+        .filter((r): r is { place: (typeof allPlaces)[number]; km: number } => !!r)
+        .sort((a, b) => a.km - b.km || b.place.popularity - a.place.popularity)
+        .slice(0, 6)
+    : [];
+
+const trail = [
+  { name: 'Home', href: '/' },
+  { name: division.name, href: `/divisions/${division.slug}` },
+  { name: district.name, href: `/districts/${district.slug}` },
+];
+
+const jsonLd = [
+  collectionLd(
+    districtTitle(district),
+    district.summary,
+    `/districts/${district.slug}`,
+    places.map((p) => ({ name: p.name, slug: p.slug }))
+  ),
+];
+---
+
+<Base
+  title={districtTitle(district)}
+  description={clamp(`${district.tagline} ${district.summary}`)}
+  path={`/districts/${district.slug}`}
+  image={artPath(district.art, 'day')}
+  breadcrumbs={trail}
+  jsonLd={jsonLd}
+  transparentHeader
+>
+  <div data-district-tracker data-total="64" hidden></div>
+
+  <PageHero
+    eyebrow={`${division.name} Division · ${places.length} ${places.length === 1 ? 'destination' : 'destinations'}`}
+    title={district.name}
+    titleBn={district.nameBn}
+    lead={district.tagline}
+    trail={trail}
+    art={district.art}
+    size="tall"
+  >
+    <div class="dt-hero-actions">
+      <button
+        type="button"
+        class="dt-visit"
+        data-visit-toggle={district.slug}
+        data-visit-name={district.name}
+        aria-pressed="false"
+      >
+        <Icon name="check" size={15} />
+        <span class="dt-visit-on">Visited</span>
+        <span class="dt-visit-off">Mark as visited</span>
+      </button>
+      <a href="/districts" class="dt-hero-link">
+        <Icon name="grid" size={14} /> All 64 districts
+      </a>
+    </div>
+  </PageHero>
+
+  <!-- ══════════ OVERVIEW ══════════ -->
+  <section class="section-tight">
+    <div class="wrap dt-intro">
+      <div class="dt-prose">
+        <div class="prose-atlas">
+          {district.description.map((p) => <p>{p}</p>)}
+        </div>
+
+        <div class="dt-known">
+          <h2 class="dt-sub">Known for</h2>
+          <ul class="dt-known-list">
+            {district.knownFor.map((k) => (
+              <li>
+                <Icon name="star" size={14} />
+                <span>{k}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {
+          district.speciality && (
+            <p class="dt-speciality">
+              <Icon name="basket" size={16} />
+              <span>
+                <strong>Local speciality:</strong> {district.speciality}
+              </span>
+            </p>
+          )
+        }
+      </div>
+
+      <aside class="dt-aside">
+        <div class="dt-card">
+          <BangladeshMap
+            level="districts"
+            focus={district.slug}
+            markers={places.filter((p) => p.coords)}
+            interactive={false}
+            choropleth={false}
+          />
+          <dl class="dt-facts">
+            <div><dt>Division</dt><dd><a href={`/divisions/${division.slug}`}>{division.name}</a></dd></div>
+            {district.areaKm2 && (
+              <div><dt>Area</dt><dd class="tnum">{district.areaKm2.toLocaleString('en-GB')} km²</dd></div>
+            )}
+            <div><dt>Destinations</dt><dd class="tnum">{places.length}</dd></div>
+            <div>
+              <dt>Coordinates</dt>
+              <dd class="tnum dt-coords">{district.coords.lat.toFixed(3)}° N, {district.coords.lng.toFixed(3)}° E</dd>
+            </div>
+          </dl>
+        </div>
+
+        {
+          districtCategories.length > 0 && (
+            <div class="dt-card">
+              <h2 class="dt-sub">What is here</h2>
+              <ul class="dt-cats">
+                {districtCategories.map(({ category, count }) => (
+                  <li>
+                    <a href={`/categories/${category.slug}`}>
+                      <Icon name={category.icon} size={15} />
+                      <span class="dt-cat-name">{category.name}</span>
+                      <span class="dt-cat-count tnum">{count}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════ DESTINATIONS ══════════ -->
+  {
+    featured.length > 0 && (
+      <section class="section-tight">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Main attractions"
+            title={`The best of ${district.name}`}
+            lead={
+              places.length > featured.length
+                ? `The destinations most people come to ${district.name} for.`
+                : undefined
+            }
+          />
+          <div class="grid-cards">
+            {featured.map((p, i) => (
+              <PlaceCard place={p} showDistrict={false} loading={i < 3 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    gems.length > 0 && (
+      <section class="section-tight dt-gems-band">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Under-visited"
+            title="Quieter in this district"
+            lead="Worth the detour if you have the time and your own transport."
+          />
+          <div class="grid-cards">
+            {gems.map((p) => (
+              <PlaceCard place={p} showDistrict={false} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    others.length > 0 && (
+      <section class="section-tight">
+        <div class="wrap">
+          <SectionHead eyebrow="Also here" title="Everything else" />
+          <div class="grid-cards">
+            {others.map((p) => (
+              <PlaceCard place={p} showDistrict={false} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ══════════ THIN DISTRICT FALLBACK ══════════ -->
+  {
+    nearbyElsewhere.length > 0 && (
+      <section class="section-tight dt-nearby-band">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Within reach"
+            title={`Nearest destinations outside ${district.name}`}
+            lead={`${district.name} is thinly covered in this atlas — these are the closest places worth the journey, in any direction.`}
+          />
+          <div class="grid-cards">
+            {nearbyElsewhere.map(({ place, km }) => (
+              <PlaceCard place={place} km={km} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ══════════ NEIGHBOURS ══════════ -->
+  {
+    neighbours.length > 0 && (
+      <section class="section">
+        <div class="wrap">
+          <SectionHead
+            eyebrow="Carry on"
+            title="Bordering districts"
+            lead={`${district.name} shares a boundary with ${neighbours.length} other ${neighbours.length === 1 ? 'district' : 'districts'}. Distances are between district centres.`}
+            href={`/divisions/${division.slug}`}
+            linkLabel={`All of ${division.name}`}
+          />
+          <ul class="dt-neighbours">
+            {neighbours.map(({ district: d, count, km }) => (
+              <li>
+                <a href={`/districts/${d.slug}`}>
+                  <span class="dt-n-name">{d.name}</span>
+                  <span class="dt-n-meta">
+                    <span class="tnum">{count}</span> {count === 1 ? 'place' : 'places'}
+                    <span class="dt-n-dot">·</span>
+                    <span class="tnum">{km}</span> km
+                  </span>
+                  <Icon name="arrowRight" size={15} class="dt-n-arrow" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .dt-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
+  }
+  .dt-visit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border: 1px solid rgb(244 241 232 / 0.34);
+    border-radius: var(--radius-pill);
+    background: rgb(10 22 20 / 0.4);
+    backdrop-filter: blur(10px);
+    color: #f4f1e8;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s, border-color 0.16s;
+  }
+  .dt-visit:hover {
+    background: rgb(244 241 232 / 0.16);
+    border-color: rgb(244 241 232 / 0.6);
+  }
+  .dt-visit[aria-pressed='true'] {
+    background: var(--color-delta-500);
+    border-color: var(--color-delta-500);
+    color: #fff;
+  }
+  .dt-visit-on {
+    display: none;
+  }
+  .dt-visit[aria-pressed='true'] .dt-visit-on {
+    display: inline;
+  }
+  .dt-visit[aria-pressed='true'] .dt-visit-off {
+    display: none;
+  }
+  .dt-hero-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: rgb(244 241 232 / 0.78);
+  }
+  .dt-hero-link:hover {
+    color: #fff;
+  }
+
+  .dt-intro {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .dt-intro {
+      grid-template-columns: minmax(0, 1fr) 19rem;
+      gap: 3.5rem;
+    }
+  }
+
+  .dt-sub {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.875rem;
+  }
+
+  .dt-known {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .dt-known-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5625rem;
+  }
+  .dt-known-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+  }
+  .dt-known-list :global(svg) {
+    color: var(--color-marigold-500);
+    margin-top: 0.25rem;
+    flex: none;
+  }
+
+  .dt-speciality {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-card);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+  }
+  .dt-speciality :global(svg) {
+    color: var(--accent);
+    margin-top: 0.15rem;
+    flex: none;
+  }
+  .dt-speciality strong {
+    color: var(--fg);
+  }
+
+  .dt-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .dt-card {
+    padding: 1rem 1.125rem 1.125rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .dt-facts {
+    display: grid;
+    gap: 0.625rem;
+    margin: 1rem 0 0;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--line);
+  }
+  .dt-facts > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .dt-facts dt {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    white-space: nowrap;
+  }
+  .dt-facts dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-align: right;
+  }
+  .dt-facts a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+  .dt-facts a:hover {
+    color: var(--accent);
+  }
+  .dt-coords {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem !important;
+    font-weight: 400 !important;
+    color: var(--fg-subtle);
+  }
+
+  .dt-cats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dt-cats a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4375rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.875rem;
+  }
+  .dt-cats li:last-child a {
+    border-bottom: 0;
+  }
+  .dt-cats a:hover {
+    color: var(--accent);
+  }
+  .dt-cats :global(svg) {
+    color: var(--fg-subtle);
+    flex: none;
+  }
+  .dt-cat-name {
+    flex: 1;
+  }
+  .dt-cat-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--fg-subtle);
+  }
+
+  .dt-gems-band,
+  .dt-nearby-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+
+  .dt-neighbours {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dt-neighbours a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    background: var(--bg-raised);
+    transition: border-color 0.16s, transform 0.16s var(--ease-out-soft);
+  }
+  .dt-neighbours a:hover {
+    border-color: var(--accent);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .dt-neighbours a:hover {
+      transform: translateY(-2px);
+    }
+  }
+  .dt-n-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .dt-n-meta {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    white-space: nowrap;
+  }
+  .dt-n-dot {
+    margin-inline: 0.25rem;
+  }
+  :global(.dt-n-arrow) {
+    color: var(--fg-subtle);
+    flex: none;
+    transition: transform 0.16s, color 0.16s;
+  }
+  .dt-neighbours a:hover :global(.dt-n-arrow) {
+    color: var(--accent);
+    transform: translateX(2px);
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+  }
+</style>
+
