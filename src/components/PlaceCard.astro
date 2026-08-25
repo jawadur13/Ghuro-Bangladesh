@@ -1,0 +1,329 @@
+---
+import type { Place } from '@lib/types';
+import Art from './Art.astro';
+import Icon from './Icon.astro';
+import FavButton from './FavButton.astro';
+import { getDistrict, getCategory } from '@data/index';
+
+interface Props {
+  place: Place;
+  /** `compact` for rails and sidebars, `feature` for hero slots. */
+  variant?: 'default' | 'compact' | 'feature' | 'row';
+  /** Show the district line. Off when the card sits inside a district page. */
+  showDistrict?: boolean;
+  loading?: 'lazy' | 'eager';
+  /** Distance badge, used on "nearby" surfaces. */
+  km?: number;
+  /** Ordinal shown on route collections. */
+  index?: number;
+  class?: string;
+}
+
+const {
+  place,
+  variant = 'default',
+  showDistrict = true,
+  loading = 'lazy',
+  km,
+  index,
+  class: className = '',
+} = Astro.props;
+
+const district = getDistrict(place.district);
+const primary = getCategory(place.categories[0]);
+const href = `/places/${place.slug}`;
+const blurb = variant === 'compact' || variant === 'row' ? place.tagline : place.summary;
+---
+
+<article
+  class:list={['pcard', `pcard-${variant}`, className]}
+  data-place={place.slug}
+  data-popularity={place.popularity}
+  data-district={place.district}
+  data-division={place.division}
+  data-categories={place.categories.join(' ')}
+  data-tags={place.tags.join(' ')}
+>
+  <div class="pcard-media">
+    <Art
+      art={place.art}
+      alt={`Illustrated ${primary?.name.toLowerCase() ?? 'landscape'} scene representing ${place.name}`}
+      loading={loading}
+      ratio={variant === 'feature' ? '16 / 10' : variant === 'row' ? '1 / 1' : '3 / 2'}
+    />
+
+    {index !== undefined && <span class="pcard-index tnum">{index}</span>}
+
+    <div class="pcard-badges">
+      {place.unesco && <span class="badge badge-unesco">UNESCO</span>}
+      {place.hiddenGem && <span class="badge badge-gem">Hidden gem</span>}
+      {km !== undefined && <span class="badge badge-km tnum">{km < 10 ? km.toFixed(1) : Math.round(km)} km</span>}
+    </div>
+
+    <FavButton slug={place.slug} name={place.name} class="pcard-fav above" />
+  </div>
+
+  <div class="pcard-body">
+    {
+      showDistrict && district && (
+        <a href={`/districts/${district.slug}`} class="pcard-district above">
+          <Icon name="pin" size={13} />
+          {district.name}
+        </a>
+      )
+    }
+
+    <h3 class="pcard-title">
+      <a href={href} class="stretch">{place.name}</a>
+    </h3>
+
+    <p class="pcard-bn bn" lang="bn">{place.nameBn}</p>
+
+    <p class="pcard-blurb">{blurb}</p>
+
+    <div class="pcard-meta">
+      {primary && <span class="pcard-cat">{primary.name}</span>}
+      {
+        place.duration && (
+          <span class="pcard-dur">
+            <Icon name="clock" size={13} />
+            {place.duration.label}
+          </span>
+        )
+      }
+    </div>
+  </div>
+</article>
+
+<style>
+  .pcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    transition:
+      border-color 0.22s var(--ease-out-soft),
+      box-shadow 0.22s var(--ease-out-soft),
+      transform 0.22s var(--ease-out-soft);
+  }
+  .pcard:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-pop);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .pcard:hover {
+      transform: translateY(-3px);
+    }
+  }
+  .pcard:focus-within {
+    border-color: var(--accent);
+  }
+
+  .pcard-media {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-inset);
+  }
+  .pcard-media :global(.art) {
+    transition: transform 0.5s var(--ease-out-soft);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .pcard:hover .pcard-media :global(.art) {
+      transform: scale(1.045);
+    }
+  }
+
+  .pcard-index {
+    position: absolute;
+    top: 0.625rem;
+    left: 0.625rem;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .pcard-badges {
+    position: absolute;
+    left: 0.625rem;
+    bottom: 0.625rem;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3125rem;
+  }
+  .badge {
+    padding: 0.1875rem 0.4375rem;
+    border-radius: 5px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+  }
+  .badge-unesco {
+    background: rgb(255 255 255 / 0.92);
+    color: #1a3a5c;
+  }
+  .badge-gem {
+    background: color-mix(in oklab, var(--color-marigold-400) 92%, transparent);
+    color: #3a2405;
+  }
+  .badge-km {
+    background: rgb(12 20 18 / 0.72);
+    color: #fff;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .pcard-media :global(.pcard-fav) {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 3;
+  }
+
+  .pcard-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.9375rem 1rem 1.0625rem;
+    flex: 1;
+  }
+
+  .pcard-district {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 0.25rem;
+    align-self: flex-start;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fg-subtle);
+    letter-spacing: 0.01em;
+    transition: color 0.16s;
+  }
+  .pcard-district:hover {
+    color: var(--accent);
+  }
+
+  .pcard-title {
+    font-size: 1.1875rem;
+    line-height: 1.2;
+    margin-top: 0.125rem;
+    font-variation-settings: 'opsz' 40, 'WONK' 1;
+  }
+  .pcard-title a:hover {
+    color: var(--accent);
+  }
+
+  .pcard-bn {
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+    line-height: 1.4;
+  }
+
+  .pcard-blurb {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pcard-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  .pcard-cat {
+    font-weight: 650;
+    color: var(--accent);
+  }
+  .pcard-dur {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* ── Compact: rails and sidebars ── */
+  .pcard-compact {
+    width: 16rem;
+  }
+  .pcard-compact .pcard-title {
+    font-size: 1.0625rem;
+  }
+  .pcard-compact .pcard-blurb {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  /* ── Feature: hero slot ── */
+  .pcard-feature .pcard-title {
+    font-size: clamp(1.375rem, 2.4vw, 1.75rem);
+  }
+  .pcard-feature .pcard-body {
+    padding: 1.125rem 1.25rem 1.375rem;
+  }
+  .pcard-feature .pcard-blurb {
+    font-size: 0.9375rem;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+  }
+
+  /* ── Row: dense list layout ── */
+  .pcard-row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .pcard-row .pcard-media {
+    flex: none;
+    width: 7rem;
+  }
+  .pcard-row :global(.pcard-fav) {
+    top: 0.375rem;
+    right: 0.375rem;
+  }
+  .pcard-row .pcard-body {
+    padding: 0.75rem 0.9375rem 0.8125rem;
+    gap: 0.125rem;
+  }
+  .pcard-row .pcard-title {
+    font-size: 1rem;
+  }
+  .pcard-row .pcard-bn {
+    display: none;
+  }
+  .pcard-row .pcard-blurb {
+    font-size: 0.8125rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    margin-top: 0.25rem;
+  }
+  .pcard-row .pcard-meta {
+    padding-top: 0.5rem;
+  }
+  @media (min-width: 30rem) {
+    .pcard-row .pcard-media {
+      width: 9.5rem;
+    }
+  }
+</style>

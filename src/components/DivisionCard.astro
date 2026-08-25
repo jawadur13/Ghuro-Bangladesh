@@ -1,0 +1,158 @@
+---
+import type { Division } from '@lib/types';
+import Art from './Art.astro';
+import Icon from './Icon.astro';
+import { placesIn, districtsIn } from '@data/index';
+
+interface Props {
+  division: Division;
+  loading?: 'lazy' | 'eager';
+  variant?: 'default' | 'wide';
+}
+const { division, loading = 'lazy', variant = 'default' } = Astro.props;
+
+const count = placesIn(division.slug).length;
+const districtCount = districtsIn(division.slug).length;
+---
+
+<article class:list={['dcard', `dcard-${variant}`, `hue-${division.hue}`]}>
+  <div class="dcard-media">
+    <Art
+      art={division.art}
+      alt={`Illustrated landscape representing ${division.name} division`}
+      loading={loading}
+      ratio={variant === 'wide' ? '21 / 9' : '4 / 3'}
+    />
+    <div class="dcard-scrim"></div>
+    <div class="dcard-overlay">
+      <h3 class="dcard-title">
+        <a href={`/divisions/${division.slug}`} class="stretch">{division.name}</a>
+      </h3>
+      <p class="dcard-bn bn" lang="bn">{division.nameBn}</p>
+    </div>
+  </div>
+
+  <div class="dcard-body">
+    <p class="dcard-tagline">{division.tagline}</p>
+    <ul class="dcard-stats">
+      <li><Icon name="pin" size={14} /> <span class="tnum">{count}</span> places</li>
+      <li><Icon name="grid" size={14} /> <span class="tnum">{districtCount}</span> districts</li>
+    </ul>
+  </div>
+</article>
+
+<style>
+  .dcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition:
+      border-color 0.22s,
+      box-shadow 0.22s,
+      transform 0.22s var(--ease-out-soft);
+  }
+  .dcard:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-pop);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .dcard:hover {
+      transform: translateY(-3px);
+    }
+  }
+
+  .dcard-media {
+    position: relative;
+    overflow: hidden;
+  }
+  .dcard-media :global(.art) {
+    transition: transform 0.55s var(--ease-out-soft);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .dcard:hover .dcard-media :global(.art) {
+      transform: scale(1.05);
+    }
+  }
+
+  .dcard-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(6 16 14 / 0.82) 0%, rgb(6 16 14 / 0.28) 42%, transparent 72%);
+  }
+
+  .dcard-overlay {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 0.875rem;
+    color: #fff;
+  }
+  .dcard-title {
+    font-size: clamp(1.25rem, 2.6vw, 1.625rem);
+    line-height: 1.1;
+    color: #fff;
+  }
+  .dcard-bn {
+    font-size: 0.875rem;
+    opacity: 0.86;
+    margin-top: 0.125rem;
+  }
+
+  .dcard-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.9375rem 1rem 1.0625rem;
+    flex: 1;
+  }
+  .dcard-tagline {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    flex: 1;
+  }
+  .dcard-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.8125rem;
+    color: var(--fg-subtle);
+  }
+  .dcard-stats li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+  }
+  .dcard-stats span {
+    font-weight: 700;
+    color: var(--fg);
+  }
+
+  .dcard-wide {
+    flex-direction: column;
+  }
+  @media (min-width: 44rem) {
+    .dcard-wide {
+      flex-direction: row;
+    }
+    .dcard-wide .dcard-media {
+      flex: 1 1 58%;
+    }
+    .dcard-wide .dcard-body {
+      flex: 1 1 42%;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .dcard-wide .dcard-tagline {
+      font-size: 1rem;
+      flex: none;
+    }
+  }
+</style>
