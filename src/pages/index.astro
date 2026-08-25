@@ -1,0 +1,1251 @@
+---
+import Base from '@/layouts/Base.astro';
+import SectionHead from '@components/SectionHead.astro';
+import PlaceCard from '@components/PlaceCard.astro';
+import DivisionCard from '@components/DivisionCard.astro';
+import BangladeshMap from '@components/BangladeshMap.astro';
+import Icon from '@components/Icon.astro';
+import Art from '@components/Art.astro';
+import {
+  divisions,
+  stats,
+  featuredPlaces,
+  hiddenGems,
+  popularPlaces,
+  collections,
+  categories,
+  featuredTags,
+  seasons,
+  places,
+  getDistrict,
+  placesInSeason,
+} from '@data/index';
+import { SITE, faqLd } from '@lib/seo';
+
+/* ── Editorial selection for each homepage surface ─────────────────────── */
+
+const heroPlace = places.find((p) => p.slug === 'sundarbans') ?? featuredPlaces[0];
+
+const featured = featuredPlaces.filter((p) => p.slug !== heroPlace.slug).slice(0, 6);
+
+const popular = popularPlaces.slice(0, 8);
+
+const gems = hiddenGems
+  .filter((p) => p.popularity >= 2)
+  .sort((a, b) => b.popularity - a.popularity)
+  .slice(0, 6);
+
+/* The current month drives the seasonal band, so the homepage is never stale. */
+const now = new Date();
+const month = now.getMonth() + 1;
+const currentSeason =
+  seasons.find((s) => s.months.includes(month) && s.months.length <= 2) ??
+  seasons.find((s) => s.months.includes(month))!;
+const seasonalPicks = placesInSeason(currentSeason.slug)
+  .sort((a, b) => b.popularity - a.popularity)
+  .slice(0, 6);
+
+const featuredCollections = collections.filter((c) => c.featured).slice(0, 4);
+
+const categoryHighlights = [
+  'beach', 'haor', 'archaeological', 'tea-garden', 'hill', 'mosque',
+  'waterfall', 'temple', 'wildlife', 'island', 'zamindar-bari', 'market',
+]
+  .map((slug) => categories.find((c) => c.slug === slug))
+  .filter((c): c is NonNullable<typeof c> => !!c);
+
+const weekend = places
+  .filter((p) => p.tags.includes('weekend') || p.tripLength === 'overnight')
+  .sort((a, b) => b.popularity - a.popularity)
+  .slice(0, 6);
+
+/* ── Facts strip: specific, checkable, and not a brochure ─────────────── */
+const facts = [
+  {
+    icon: 'water' as const,
+    stat: '≈700',
+    label: 'rivers',
+    note: 'Bangladesh is a river system with land in between — the largest delta on earth.',
+  },
+  {
+    icon: 'tree' as const,
+    stat: '6,000 km²',
+    label: 'of mangrove',
+    note: 'The Bangladeshi Sundarbans: the largest contiguous mangrove forest in the world.',
+  },
+  {
+    icon: 'mountain' as const,
+    stat: '1',
+    label: 'mountain region',
+    note: 'Everything above 1,000 m is in the Chittagong Hill Tracts. The rest is delta.',
+  },
+  {
+    icon: 'sunIcon' as const,
+    stat: '6',
+    label: 'seasons',
+    note: 'The Bengali calendar counts six, not four — and travel here genuinely follows them.',
+  },
+];
+
+const faqs = [
+  {
+    q: 'When is the best time to visit Bangladesh?',
+    a: 'November to February — cool, dry and clear, with the best conditions for the Sundarbans, the Chittagong Hill Tracts and long walking days at archaeological sites. November is arguably the sweet spot: winter weather without the December–January crowds. The monsoon (June–September) is the only time to see the haors flooded, Ratargul swamp forest navigable and the waterfalls running.',
+  },
+  {
+    q: 'How many UNESCO World Heritage Sites does Bangladesh have?',
+    a: 'Three: the Sundarbans mangrove forest, the Historic Mosque City of Bagerhat, and the Buddhist Vihara at Paharpur (Somapura Mahavihara) in Naogaon.',
+  },
+  {
+    q: 'Do I need a permit to travel in the Chittagong Hill Tracts?',
+    a: 'Some areas of Bandarban, Rangamati and Khagrachhari require official permission, a registered local guide, or escorted convoy travel. Sajek is reached by convoy at fixed times; Thanchi and Ruma have been restricted at various points. Rules change, sometimes at short notice, so confirm the current position locally before booking.',
+  },
+  {
+    q: 'What is the highest point in Bangladesh?',
+    a: 'Officially Tazing Dong (Bijoy) in Bandarban, though repeated independent GPS surveys have measured Saka Haphong, near the Myanmar border, as higher. The dispute is unresolved. Keokradong, long cited as the highest, is lower than both but remains the most-climbed summit in the country.',
+  },
+  {
+    q: 'Can you really see the Himalaya from Bangladesh?',
+    a: 'Yes, from Tetulia in Panchagarh — the northernmost point of the country. Kanchenjunga, roughly 140 km away, is visible on genuinely clear mornings in October and November, usually only until about nine before haze closes it down.',
+  },
+];
+
+const jsonLd = [faqLd(faqs)];
+---
+
+<Base
+  title={`${SITE.name} — Discover Bangladesh, One Place at a Time`}
+  description={`A field atlas of Bangladesh: ${stats.places} researched destinations across all 8 divisions and 64 districts, with honest travel notes, seasons, routes and an interactive map.`}
+  path="/"
+  rawTitle
+  jsonLd={jsonLd}
+  transparentHeader
+  bodyClass="home"
+>
+  <!-- ═══════════════════════════ HERO ═══════════════════════════ -->
+  <section class="hero grain" aria-labelledby="hero-title">
+    <div class="hero-art">
+      <Art
+        art={heroPlace.art}
+        alt=""
+        loading="eager"
+        priority
+        ratio="16 / 9"
+        class="hero-art-img"
+      />
+      <div class="hero-scrim"></div>
+    </div>
+
+    <div class="wrap hero-inner">
+      <p class="hero-kicker">
+        <span class="hero-dot" aria-hidden="true"></span>
+        A field atlas of Bangladesh
+      </p>
+
+      <h1 id="hero-title" class="hero-title">
+        Discover Bangladesh,<br /><em>one place at a time.</em>
+      </h1>
+
+      <p class="hero-lead">
+        {stats.places} researched destinations across all {stats.divisions} divisions and
+        {stats.districts} districts — the mangroves, the mountains, the terracotta temples and the
+        floating markets. Written for people who are actually going.
+      </p>
+
+      <div class="hero-search">
+        <button type="button" class="hero-search-btn" data-search-open>
+          <Icon name="search" size={20} />
+          <span>Search a place, district or category…</span>
+          <kbd>/</kbd>
+        </button>
+      </div>
+
+      <ul class="hero-chips">
+        <li><a href="/discover" class="hero-chip hero-chip-accent">
+          <Icon name="compass" size={15} /> Where should I go?
+        </a></li>
+        <li><a href="/map" class="hero-chip"><Icon name="map" size={15} /> Open the map</a></li>
+        <li><a href="/collections/hidden-gems" class="hero-chip"><Icon name="sparkle" size={15} /> Hidden gems</a></li>
+        <li><a href={`/seasons/${currentSeason.slug}`} class="hero-chip">
+          <Icon name="calendar" size={15} /> Good right now
+        </a></li>
+      </ul>
+
+      <dl class="hero-stats">
+        <div><dt>Destinations</dt><dd class="tnum" data-count-to={stats.places}>0</dd></div>
+        <div><dt>Districts</dt><dd class="tnum" data-count-to={stats.districts}>0</dd></div>
+        <div><dt>Divisions</dt><dd class="tnum" data-count-to={stats.divisions}>0</dd></div>
+        <div><dt>UNESCO sites</dt><dd class="tnum" data-count-to={stats.unesco}>0</dd></div>
+      </dl>
+    </div>
+
+    <a href="#explore-map" class="hero-scroll" aria-label="Scroll to the map">
+      <Icon name="chevronDown" size={20} />
+    </a>
+  </section>
+
+  <!-- ═══════════════════════ MAP ═══════════════════════ -->
+  <section class="section band-dark map-band" id="explore-map" aria-labelledby="map-title">
+    <div class="wrap map-band-inner">
+      <div class="map-band-text reveal">
+        <p class="eyebrow">Start with the geography</p>
+        <h2 id="map-title" class="map-band-title">
+          Bangladesh is easier to understand from above.
+        </h2>
+        <p class="map-band-lead">
+          Eight divisions, sixty-four districts. The shading shows where this atlas currently has the
+          most to say — the hill districts and the north-east are dense, the western plains are
+          quieter, and that is an honest picture of where the destinations are.
+        </p>
+        <ul class="map-band-list">
+          {
+            divisions.map((d) => (
+              <li>
+                <a href={`/divisions/${d.slug}`}>
+                  <span class={`map-band-dot hue-${d.hue}`} aria-hidden="true" />
+                  <span class="map-band-name">{d.name}</span>
+                  <span class="map-band-count tnum">
+                    {places.filter((p) => p.division === d.slug).length}
+                  </span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <a href="/map" class="btn btn-primary">
+          <Icon name="map" size={16} /> Explore the full map
+        </a>
+      </div>
+
+      <div class="map-band-map reveal" data-reveal-delay="120">
+        <BangladeshMap level="districts" height="auto" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FEATURED ═══════════════════════ -->
+  <section class="section" aria-labelledby="featured-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Start here"
+        title="The ones you should not miss"
+        lead="If you only take a handful of trips in Bangladesh, take these. Each one is genuinely unlike the others."
+        href="/explore"
+        linkLabel="All destinations"
+      />
+      <div class="grid-cards">
+        {featured.map((p, i) => (
+          <div class="reveal" data-reveal-delay={i * 60}>
+            <PlaceCard place={p} loading={i < 3 ? 'eager' : 'lazy'} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ DIVISIONS ═══════════════════════ -->
+  <section class="section section-tight" aria-labelledby="divisions-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Explore by region"
+        title="Eight divisions, eight different countries"
+        lead="The delta in the south-west, mountains in the south-east, archaeology in the north-west, tea and wetland in the north-east. Bangladesh is small and it is not uniform."
+        href="/divisions"
+        linkLabel="All divisions"
+      />
+      <div class="grid-divisions">
+        {divisions.map((d, i) => (
+          <div class="reveal" data-reveal-delay={(i % 4) * 60}>
+            <DivisionCard division={d} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SEASONAL ═══════════════════════ -->
+  <section class="section season-band" aria-labelledby="season-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow={`It is ${currentSeason.name.toLowerCase()} — ${currentSeason.bengaliSeason}`}
+        title={currentSeason.tagline}
+        lead={currentSeason.description}
+        href={`/seasons/${currentSeason.slug}`}
+        linkLabel="More for this season"
+      />
+
+      <div class="season-grid">
+        <div class="season-notes reveal">
+          <div class="season-note season-good">
+            <h3><Icon name="check" size={16} /> Good for right now</h3>
+            <ul>{currentSeason.goodFor.slice(0, 4).map((g) => <li>{g}</li>)}</ul>
+          </div>
+          <div class="season-note season-watch">
+            <h3><Icon name="alert" size={16} /> Worth knowing</h3>
+            <ul>{currentSeason.watchOut.slice(0, 3).map((g) => <li>{g}</li>)}</ul>
+          </div>
+        </div>
+
+        <div class="season-rail-wrap reveal" data-reveal-delay="100">
+          <div class="rail season-rail">
+            {seasonalPicks.map((p) => <PlaceCard place={p} variant="compact" />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ HIDDEN GEMS ═══════════════════════ -->
+  <section class="section band-dark gems-band" aria-labelledby="gems-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Under-visited"
+        title="Places almost nobody goes"
+        lead="Bangladeshi tourism concentrates on a very short list. These are not obscure because they are second-rate — they are obscure because nobody has told you about them."
+        href="/collections/hidden-gems"
+        linkLabel="The full list"
+      />
+      <div class="grid-cards">
+        {gems.map((p, i) => (
+          <div class="reveal" data-reveal-delay={i * 60}>
+            <PlaceCard place={p} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ COLLECTIONS ═══════════════════════ -->
+  <section class="section" aria-labelledby="collections-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Curated routes"
+        title="Trips worth building a holiday around"
+        lead="Themed routes and collections assembled from the atlas — a terracotta trail across the north-west, a monsoon-only itinerary, ten days along the whole coast."
+        href="/collections"
+        linkLabel="All collections"
+      />
+      <div class="grid-collections">
+        {
+          featuredCollections.map((c, i) => (
+            <article class="ccard reveal" data-reveal-delay={i * 60}>
+              <div class="ccard-media">
+                <Art art={c.art} alt="" ratio="16 / 9" />
+                <div class="ccard-scrim" />
+                {c.days && <span class="ccard-days">{c.days} days</span>}
+              </div>
+              <div class="ccard-body">
+                <h3 class="ccard-title">
+                  <a href={`/collections/${c.slug}`} class="stretch">
+                    {c.title}
+                  </a>
+                </h3>
+                <p class="ccard-tagline">{c.tagline}</p>
+                <p class="ccard-count">
+                  <Icon name="route" size={14} />
+                  {c.places.length} places
+                </p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ CATEGORIES ═══════════════════════ -->
+  <section class="section section-tight" aria-labelledby="cats-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Browse by kind"
+        title="What are you actually looking for?"
+        href="/categories"
+        linkLabel="All categories"
+      />
+      <div class="grid-categories">
+        {
+          categoryHighlights.map((c, i) => (
+            <a href={`/categories/${c.slug}`} class="catcard reveal" data-reveal-delay={(i % 6) * 40}>
+              <span class="catcard-icon">
+                <Icon name={c.icon} size={20} />
+              </span>
+              <span class="catcard-text">
+                <span class="catcard-name">{c.name}</span>
+                <span class="catcard-bn bn" lang="bn">
+                  {c.nameBn}
+                </span>
+              </span>
+              <Icon name="arrowRight" size={16} class="catcard-arrow" />
+            </a>
+          ))
+        }
+      </div>
+
+      <div class="interest-row">
+        <p class="interest-label">Or by interest</p>
+        <ul class="interest-chips">
+          {featuredTags.map((t) => <li><a href={`/tags/${t.slug}`} class="chip">{t.name}</a></li>)}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ WEEKEND ═══════════════════════ -->
+  <section class="section" aria-labelledby="weekend-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Two days is enough"
+        title="Weekend trips"
+        lead="Places that genuinely repay one night away — most of them reachable from a major city in under four hours."
+        href="/tags/weekend"
+        linkLabel="More weekend trips"
+      />
+      <div class="rail">
+        {weekend.map((p) => <PlaceCard place={p} variant="compact" />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FACTS ═══════════════════════ -->
+  <section class="section facts-band topo" aria-labelledby="facts-title">
+    <div class="wrap">
+      <SectionHead
+        center
+        eyebrow="Context"
+        title="Four things that explain the whole country"
+      />
+      <div class="facts-grid">
+        {
+          facts.map((f, i) => (
+            <div class="fact reveal" data-reveal-delay={i * 70}>
+              <span class="fact-icon">
+                <Icon name={f.icon} size={22} />
+              </span>
+              <p class="fact-stat">{f.stat}</p>
+              <p class="fact-label">{f.label}</p>
+              <p class="fact-note">{f.note}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ POPULAR ═══════════════════════ -->
+  <section class="section section-tight" aria-labelledby="popular-title">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Best known"
+        title="The places every Bangladeshi can name"
+        href="/explore?sort=popular"
+        linkLabel="Sorted by renown"
+      />
+      <ol class="popular-list">
+        {
+          popular.map((p, i) => {
+            const district = getDistrict(p.district);
+            return (
+              <li class="reveal" data-reveal-delay={(i % 4) * 50}>
+                <a href={`/places/${p.slug}`} class="popular-item">
+                  <span class="popular-rank tnum">{String(i + 1).padStart(2, '0')}</span>
+                  <Art art={p.art} alt="" ratio="1 / 1" class="popular-art" />
+                  <span class="popular-text">
+                    <span class="popular-name">{p.name}</span>
+                    <span class="popular-where">{district?.name}</span>
+                  </span>
+                  <Icon name="arrowUpRight" size={16} class="popular-arrow" />
+                </a>
+              </li>
+            );
+          })
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FAQ ═══════════════════════ -->
+  <section class="section faq-band" aria-labelledby="faq-title">
+    <div class="wrap-narrow">
+      <SectionHead
+        eyebrow="Before you go"
+        title="Questions people actually ask"
+        as="h2"
+      />
+      <div class="faq-list">
+        {
+          faqs.map((f) => (
+            <details class="faq-item">
+              <summary>
+                <span>{f.q}</span>
+                <Icon name="plus" size={17} class="faq-plus" />
+                <Icon name="minus" size={17} class="faq-minus" />
+              </summary>
+              <div class="faq-answer">
+                <p>{f.a}</p>
+              </div>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ CTA ═══════════════════════ -->
+  <section class="section cta-band">
+    <div class="wrap">
+      <div class="cta-inner grain">
+        <div class="cta-text">
+          <h2 class="cta-title">Not sure where to start?</h2>
+          <p class="cta-lead">
+            Answer five questions about when you are travelling, how long you have and what you
+            actually enjoy — and get a shortlist from {stats.places} destinations.
+          </p>
+        </div>
+        <div class="cta-actions">
+          <a href="/discover" class="btn btn-primary">
+            <Icon name="compass" size={16} /> Find my trip
+          </a>
+          <a href="/explore" class="btn btn-ghost">Browse everything</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* ══════════════════════════ HERO ══════════════════════════ */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: min(46rem, 100svh);
+    padding-block: 7rem 4.5rem;
+    overflow: hidden;
+    color: #f4f1e8;
+  }
+  .hero-art {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+  :global(.hero-art-img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .hero-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, rgb(5 20 18 / 0.94) 0%, rgb(5 20 18 / 0.78) 48%, rgb(5 20 18 / 0.42) 100%),
+      linear-gradient(to top, rgb(5 20 18 / 0.8) 0%, rgb(5 20 18 / 0.2) 55%, transparent 80%);
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 56rem;
+  }
+
+  .hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(244 241 232 / 0.82);
+    padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+    border: 1px solid rgb(244 241 232 / 0.22);
+    border-radius: var(--radius-pill);
+    backdrop-filter: blur(6px);
+  }
+  .hero-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-terracotta-400);
+    box-shadow: 0 0 0 0 rgb(222 118 77 / 0.7);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-dot {
+      animation: pulse 2.6s ease-out infinite;
+    }
+  }
+  @keyframes pulse {
+    70% {
+      box-shadow: 0 0 0 9px rgb(222 118 77 / 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgb(222 118 77 / 0);
+    }
+  }
+
+  .hero-title {
+    margin-top: 1.25rem;
+    font-size: clamp(2.5rem, 7.2vw, 4.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.032em;
+    color: #fff;
+    font-variation-settings: 'opsz' 144, 'WONK' 1;
+  }
+  .hero-title em {
+    font-style: italic;
+    color: var(--color-marigold-300);
+  }
+
+  .hero-lead {
+    margin-top: 1.25rem;
+    max-width: 40rem;
+    font-size: clamp(1rem, 1.7vw, 1.1875rem);
+    line-height: 1.62;
+    color: rgb(244 241 232 / 0.88);
+  }
+
+  .hero-search {
+    margin-top: 2rem;
+    max-width: 34rem;
+  }
+  .hero-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.9375rem 0.9375rem 0.9375rem 1.125rem;
+    border: 1px solid rgb(244 241 232 / 0.26);
+    border-radius: var(--radius-pill);
+    background: rgb(10 22 20 / 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: rgb(244 241 232 / 0.72);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s, background-color 0.18s;
+  }
+  .hero-search-btn:hover {
+    border-color: rgb(244 241 232 / 0.5);
+    background: rgb(10 22 20 / 0.72);
+  }
+  .hero-search-btn span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hero-search-btn kbd {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.4375rem;
+    border: 1px solid rgb(244 241 232 / 0.24);
+    border-radius: 5px;
+  }
+
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+  }
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid rgb(244 241 232 / 0.24);
+    border-radius: var(--radius-pill);
+    font-size: 0.875rem;
+    font-weight: 550;
+    color: rgb(244 241 232 / 0.92);
+    backdrop-filter: blur(8px);
+    transition: background-color 0.16s, border-color 0.16s, color 0.16s;
+  }
+  .hero-chip:hover {
+    background: rgb(244 241 232 / 0.12);
+    border-color: rgb(244 241 232 / 0.45);
+  }
+  .hero-chip-accent {
+    background: var(--color-terracotta-600);
+    border-color: var(--color-terracotta-600);
+    color: #fff;
+  }
+  .hero-chip-accent:hover {
+    background: var(--color-terracotta-500);
+    border-color: var(--color-terracotta-500);
+  }
+
+  .hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
+    margin: 2.5rem 0 0;
+    padding-top: 1.75rem;
+    border-top: 1px solid rgb(244 241 232 / 0.16);
+  }
+  .hero-stats dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(244 241 232 / 0.62);
+  }
+  .hero-stats dd {
+    margin: 0.1875rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.625rem, 3.4vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    font-variation-settings: 'opsz' 60;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 1.25rem;
+    z-index: 1;
+    transform: translateX(-50%);
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid rgb(244 241 232 / 0.28);
+    border-radius: 50%;
+    color: rgb(244 241 232 / 0.8);
+    backdrop-filter: blur(6px);
+  }
+  .hero-scroll:hover {
+    background: rgb(244 241 232 / 0.12);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-scroll {
+      animation: bob 2.4s ease-in-out infinite;
+    }
+  }
+  @keyframes bob {
+    50% {
+      transform: translate(-50%, 6px);
+    }
+  }
+  @media (max-height: 40rem), (max-width: 40rem) {
+    .hero-scroll {
+      display: none;
+    }
+  }
+
+  /* ══════════════════════════ GRIDS ══════════════════════════ */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+  }
+  .grid-divisions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 1.25rem;
+  }
+  .grid-collections {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  /* ══════════════════════════ MAP BAND ══════════════════════════ */
+  .map-band-inner {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+  .map-band-title {
+    margin-top: 0.5rem;
+    font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+    line-height: 1.1;
+  }
+  .map-band-lead {
+    margin-top: 0.875rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--fg-muted);
+    max-width: 34rem;
+  }
+  .map-band-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.25rem 1rem;
+    list-style: none;
+    margin: 1.75rem 0;
+    padding: 0;
+  }
+  .map-band-list a {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--line);
+    transition: color 0.16s;
+  }
+  .map-band-list a:hover {
+    color: var(--accent);
+  }
+  .map-band-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex: none;
+  }
+  .map-band-dot.hue-delta { background: var(--color-delta-400); }
+  .map-band-dot.hue-terracotta { background: var(--color-terracotta-400); }
+  .map-band-dot.hue-marigold { background: var(--color-marigold-400); }
+  .map-band-dot.hue-sundari { background: var(--color-sundari); }
+  .map-band-dot.hue-indigo { background: #6f83b5; }
+  .map-band-name {
+    flex: 1;
+  }
+  .map-band-count {
+    font-weight: 700;
+    color: var(--fg-subtle);
+    font-size: 0.8125rem;
+  }
+  .map-band-map {
+    max-width: 34rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  @media (min-width: 62rem) {
+    .map-band-inner {
+      grid-template-columns: 1fr minmax(20rem, 30rem);
+      gap: 4rem;
+    }
+  }
+
+  /* ══════════════════════════ SEASON ══════════════════════════ */
+  .season-band {
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+  .season-grid {
+    display: grid;
+    gap: 1.75rem;
+  }
+  .season-notes {
+    display: grid;
+    gap: 1rem;
+  }
+  .season-note {
+    padding: 1.125rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-raised);
+  }
+  .season-note h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .season-good h3 {
+    color: var(--color-delta-500);
+  }
+  .season-watch h3 {
+    color: var(--color-terracotta-600);
+  }
+  .season-note ul {
+    margin: 0;
+    padding-left: 1.05rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4375rem;
+  }
+  .season-note li {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
+  .season-rail-wrap {
+    min-width: 0;
+  }
+  @media (min-width: 62rem) {
+    .season-grid {
+      grid-template-columns: minmax(16rem, 22rem) 1fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+    .season-notes {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ══════════════════════════ COLLECTIONS ══════════════════════════ */
+  .ccard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--bg-raised);
+    transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s var(--ease-out-soft);
+  }
+  .ccard:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-pop);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .ccard:hover {
+      transform: translateY(-3px);
+    }
+  }
+  .ccard-media {
+    position: relative;
+  }
+  .ccard-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(6 16 14 / 0.5), transparent 60%);
+  }
+  .ccard-days {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    padding: 0.1875rem 0.5rem;
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 0.92);
+    color: #16302b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+  .ccard-body {
+    padding: 0.9375rem 1rem 1.0625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    flex: 1;
+  }
+  .ccard-title {
+    font-size: 1.125rem;
+    line-height: 1.22;
+  }
+  .ccard-title a:hover {
+    color: var(--accent);
+  }
+  .ccard-tagline {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fg-muted);
+    flex: 1;
+  }
+  .ccard-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    font-weight: 600;
+  }
+
+  /* ══════════════════════════ CATEGORIES ══════════════════════════ */
+  .grid-categories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+    gap: 0.75rem;
+  }
+  .catcard {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 0.9375rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--bg-raised);
+    transition: border-color 0.18s, transform 0.18s var(--ease-out-soft), box-shadow 0.18s;
+  }
+  .catcard:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-card);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .catcard:hover {
+      transform: translateY(-2px);
+    }
+  }
+  .catcard-icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    flex: none;
+  }
+  .catcard-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .catcard-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.25;
+  }
+  .catcard-bn {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  :global(.catcard-arrow) {
+    color: var(--fg-subtle);
+    transition: transform 0.18s, color 0.18s;
+  }
+  .catcard:hover :global(.catcard-arrow) {
+    color: var(--accent);
+    transform: translateX(3px);
+  }
+
+  .interest-row {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .interest-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 0.75rem;
+  }
+  .interest-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ══════════════════════════ FACTS ══════════════════════════ */
+  .facts-band {
+    position: relative;
+    background: var(--bg-sunken);
+    border-block: 1px solid var(--line);
+  }
+  .facts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: 1.5rem;
+    text-align: center;
+  }
+  .fact-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--accent);
+    margin-bottom: 0.875rem;
+  }
+  .fact-stat {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3.6vw, 2.375rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .fact-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-top: 0.25rem;
+  }
+  .fact-note {
+    margin-top: 0.625rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--fg-muted);
+  }
+
+  /* ══════════════════════════ POPULAR ══════════════════════════ */
+  .popular-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: 0.5rem 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: pop;
+  }
+  .popular-item {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.625rem 0.5rem;
+    border-bottom: 1px solid var(--line);
+    transition: background-color 0.16s;
+  }
+  .popular-item:hover {
+    background: var(--bg-sunken);
+  }
+  .popular-rank {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    flex: none;
+  }
+  :global(.popular-art) {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.5rem;
+    flex: none;
+  }
+  .popular-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .popular-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .popular-where {
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+  }
+  :global(.popular-arrow) {
+    color: var(--fg-subtle);
+    flex: none;
+    transition: transform 0.18s, color 0.18s;
+  }
+  .popular-item:hover :global(.popular-arrow) {
+    color: var(--accent);
+    transform: translate(2px, -2px);
+  }
+
+  /* ══════════════════════════ FAQ ══════════════════════════ */
+  .faq-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+  }
+  .faq-item summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.0625rem 0;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: color 0.16s;
+  }
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-item summary:hover {
+    color: var(--accent);
+  }
+  .faq-item summary span {
+    flex: 1;
+  }
+  :global(.faq-plus),
+  :global(.faq-minus) {
+    flex: none;
+    color: var(--fg-subtle);
+  }
+  :global(.faq-minus) {
+    display: none;
+  }
+  .faq-item[open] :global(.faq-plus) {
+    display: none;
+  }
+  .faq-item[open] :global(.faq-minus) {
+    display: block;
+  }
+  .faq-answer {
+    padding-bottom: 1.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--fg-muted);
+    max-width: 44rem;
+  }
+
+  /* ══════════════════════════ CTA ══════════════════════════ */
+  .cta-inner {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.75rem 2.5rem;
+    padding: clamp(1.75rem, 4vw, 3rem);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(135deg, var(--color-delta-900), var(--color-delta-800) 55%, var(--color-terracotta-800));
+    color: #f2efe6;
+    overflow: hidden;
+  }
+  .cta-title {
+    font-size: clamp(1.5rem, 3.4vw, 2.25rem);
+    color: #fff;
+  }
+  .cta-lead {
+    margin-top: 0.625rem;
+    max-width: 34rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgb(242 239 230 / 0.86);
+  }
+  .cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    position: relative;
+    z-index: 1;
+  }
+  .cta-text {
+    position: relative;
+    z-index: 1;
+  }
+  .cta-inner :global(.btn-ghost) {
+    border-color: rgb(242 239 230 / 0.4);
+    color: #f2efe6;
+  }
+  .cta-inner :global(.btn-ghost:hover) {
+    background: rgb(242 239 230 / 0.12);
+    border-color: rgb(242 239 230 / 0.7);
+  }
+  .cta-inner :global(.btn-primary) {
+    background: #f2efe6;
+    color: var(--color-delta-900);
+  }
+  .cta-inner :global(.btn-primary:hover) {
+    background: #fff;
+  }
+</style>
